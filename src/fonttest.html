@@ -1,0 +1,30 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=1920">
+<title>Settle font-stretch test</title>
+<style>
+@font-face{font-family:Archivo;src:url(fonts/archivo.woff2) format('woff2');font-weight:100 900;font-stretch:62% 125%;font-display:block}
+html,body{margin:0;background:#0A0B0D;color:#F4F2EE;font-family:Archivo,sans-serif;width:1920px;height:1080px;overflow:hidden}
+.row{display:flex;align-items:baseline;gap:32px;margin:0 0 6px 48px;white-space:nowrap}
+.tag{width:150px;font:600 24px Archivo;font-stretch:100%;color:#FFB23F;flex:none}
+.w{font-size:var(--s);line-height:1.05;font-weight:var(--wt)}
+h2{font:600 24px Archivo;font-stretch:100%;color:#B4B8BF;margin:14px 0 4px 48px}
+#info{position:absolute;right:48px;top:16px;font:24px Archivo;color:#B4B8BF;text-align:right}
+</style></head><body>
+<div id="info"></div>
+<h2>96px · clock · weight 300</h2>
+<div class="row" style="--s:96px;--wt:300"><span class="tag">75%</span><span class="w" style="font-stretch:75%">19:06 Thursday</span><span class="tag">100%</span><span class="w" style="font-stretch:100%">19:06 Thursday</span></div>
+<div class="row" style="--s:96px;--wt:300"><span class="tag">112%</span><span class="w" style="font-stretch:112%">19:06 Thursday</span><span class="tag">125%</span><span class="w" style="font-stretch:125%">19:06 Thursday</span></div>
+<h2>76px · hero · weight 650</h2>
+<div class="row" style="--s:76px;--wt:650"><span class="tag">75%</span><span class="w" style="font-stretch:75%">The Quiet Monsoon</span></div>
+<div class="row" style="--s:76px;--wt:650"><span class="tag">100%</span><span class="w" style="font-stretch:100%">The Quiet Monsoon</span></div>
+<div class="row" style="--s:76px;--wt:650"><span class="tag">112%</span><span class="w" style="font-stretch:112%">The Quiet Monsoon</span></div>
+<div class="row" style="--s:76px;--wt:650"><span class="tag">125%</span><span class="w" style="font-stretch:125%">The Quiet Monsoon</span></div>
+<h2>28px section · 24px poster · weight 600 / 800</h2>
+<div class="row" style="--s:28px;--wt:600;text-transform:uppercase;letter-spacing:.14em"><span class="tag">75%</span><span class="w" style="font-stretch:75%">For tonight · The Quiet Monsoon</span><span class="tag">100%</span><span class="w" style="font-stretch:100%">For tonight · The Quiet Monsoon</span><span class="tag">112%</span><span class="w" style="font-stretch:112%">For tonight · The Quiet Monsoon</span><span class="tag">125%</span><span class="w" style="font-stretch:125%">For tonight · The Quiet Monsoon</span></div>
+<div class="row" style="--s:24px;--wt:800;text-transform:uppercase"><span class="tag">75%</span><span class="w" style="font-stretch:75%">The Quiet Monsoon</span><span class="tag">100%</span><span class="w" style="font-stretch:100%">The Quiet Monsoon</span><span class="tag">112%</span><span class="w" style="font-stretch:112%">The Quiet Monsoon</span><span class="tag">125%</span><span class="w" style="font-stretch:125%">The Quiet Monsoon</span></div>
+<script>
+// Measure real rendered widths so "distinct vs identical" is a number, not an impression.
+document.fonts.ready.then(function(){
+  var ws=[].map.call(document.querySelectorAll('.w'),function(e){return e.getBoundingClientRect().width|0});
+  document.getElementById('info').textContent='Archivo loaded: '+document.fonts.check('24px Archivo')+' · widths px: '+ws.join(' / ')+' · UA '+navigator.userAgent.replace(/.*(Chrome\/[\d.]+).*/,'$1');
+});
+</script></body></html>

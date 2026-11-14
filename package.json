@@ -1,0 +1,21 @@
+{
+  "name": "settle",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Settle: a calm, lean home screen for Samsung Tizen TVs, with recommendations, an app switcher and a Control Center (fork of NelsonEU/arn0-tv)",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/SherrySingh03/settle.git" },
+  "keywords": ["samsung", "tizen", "smart-tv", "launcher", "home-screen", "trakt", "tmdb", "vetro"],
+  "engines": { "node": ">=20.11" },
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "preview": "node scripts/serve.mjs",
+    "build": "node scripts/build.mjs",
+    "logs": "node scripts/logserver.mjs",
+    "build:fonttest": "node scripts/build.mjs --fonttest",
+    "icon": "node scripts/make-icon.mjs"
+  },
+  "devDependencies": {
+    "terser": "^5.51.2"
+  }
+}

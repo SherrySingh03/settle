@@ -1,0 +1,14 @@
+<!doctype html><meta charset="utf-8"><title>brand sheet (dev only)</title>
+<body style="margin:0;background:#0A0B0D;padding:24px;font:20px sans-serif;color:#B4B8BF">
+<style>.r{display:flex;gap:26px}.c{width:150px;text-align:center}.t{position:relative;width:120px;height:120px;border-radius:24px;overflow:hidden;margin:0 auto 8px}.t img{position:absolute;object-fit:contain}</style>
+<div class="r" id="r"></div>
+<script src="js/brands.js"></script>
+<script>
+Object.keys(BRANDS).forEach(function (k) {
+  var b = BRANDS[k], c = document.createElement('div'); c.className = 'c';
+  var t = document.createElement('div'); t.className = 't'; t.style.background = b.bg;
+  var m = new Image(); m.src = 'img/brands/' + k + '.svg';
+  m.style.cssText = 'left:' + b.p[1] + '%;top:' + b.p[0] + '%;width:' + (100 - 2 * b.p[1]) + '%;height:' + (100 - 2 * b.p[0]) + '%';
+  t.appendChild(m); c.appendChild(t); c.appendChild(document.createTextNode(k)); document.getElementById('r').appendChild(c);
+});
+</script>

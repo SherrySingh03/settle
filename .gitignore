@@ -1,0 +1,24 @@
+# Your keys and per-TV values: never committed (copy src/js/config.local.example.js, or run npm run setup)
+src/js/config.local.js
+
+# Build output and packages (they contain your keys)
+dist/
+*.wgt
+*.tpk
+
+# Diagnostics reports from your TV (scripts/logserver.mjs): they hold your network and device details
+captures/
+
+# Signing material
+*.p12
+*.pfx
+author-signature.xml
+signature*.xml
+
+node_modules/
+*.log
+.env*
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

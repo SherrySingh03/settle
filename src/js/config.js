@@ -1,0 +1,106 @@
+/*
+ * Settle configuration. Secrets and per-TV values go in config.local.js (gitignored),
+ * which is merged over this one level deep.
+ *
+ * apps: each entry resolves to the first installed app matching it:
+ *   { id: 'org.tizen.netflix-app' }   exact app id
+ *   { match: 'hotstar' }              case-insensitive regex on id or name
+ * `tone` is only the background of the text-chip fallback (no icon / offline).
+ *   brand: 'youtube'                  bundled mark (js/brands.js) used when the app's own icon is missing
+ *   logo: 'img/brands/x.png'          a bundled logo used INSTEAD of the app's own icon (for apps whose package
+ *                                     ships only Samsung's generic pinwheel)
+ *   useBrand: true                   show the bundled dark logo even when the TV has an icon of its own
+ *   chip: true                        always show the name, never the icon (for apps whose package ships
+ *                                     only Samsung's generic pinwheel)
+ */
+window.LAUNCHER_CONFIG = {
+    locale: 'en-GB',
+    region: 'IN',
+    idleMs: 60000,
+
+    apps: [
+        { id: 'org.tizen.netflix-app', label: 'Netflix', brand: 'netflix', useBrand: true, tone: '#2B3A4A' },
+        { match: 'youtube', label: 'YouTube', brand: 'youtube', useBrand: true, tone: '#3A2F2A' },
+        { id: 'org.tizen.primevideo', label: 'Prime Video', brand: 'primevideo', useBrand: true, tone: '#26363A' },
+        { match: 'hotstar', label: 'JioHotstar', tone: '#14194a', logo: 'img/brands/jiohotstar.png' },
+        { match: 'spotify', label: 'Spotify', brand: 'spotify', tone: '#2C3A2E' },
+        { match: 'plex', label: 'Plex', brand: 'plex', tone: '#3A3524' },
+        { id: 'com.samsung.tv.aria-video', label: 'Apple TV', brand: 'appletv', useBrand: true, tone: '#2A2D33' }
+    ],
+
+    // Idle screensaver: launches the Aerial Screensaver app after this long with no remote input on the home screen.
+    //   appId: '' finds the installed app whose id or name contains "aerial"; set it to use a specific app.
+    //   timeoutMs: 0 turns it off. The Control Center's Screensaver tile overrides this on the TV.
+    screensaver: { appId: 'AerialScr0.AerialScreensaver', timeoutMs: 120000 },
+
+    // The Samsung Home tile (always on the dock, after Sources): tried in this order. From the TV's installed-apps list.
+    samsungHome: ['com.samsung.tv.coba.newhome', 'com.samsung.tv.coba.edenview'],
+
+    // Dynamic backdrop. images:false keeps only the colour fields (no backdrop pictures are fetched or decoded):
+    // the lightest setting, if a screen with a lot going on feels slow.
+    backdrop: { images: true },
+
+    // TMDB watch-provider id per app label (https://api.themoviedb.org/3/watch/providers/movie?watch_region=IN).
+    // The backdrop and "Popular on" title for a focused dock app come from /discover with this id. An app that is
+    // not listed is matched to TMDB's provider list by name; one with no match just keeps its icon-colour backdrop.
+    tmdbProviders: {
+        'Netflix': 8, 'Prime Video': 119, 'JioHotstar': 2336, 'Apple TV': 350, 'Plex': 538, 'Zee5': 232, 'SonyLIV': 237,
+        'MUBI': 11, 'Crunchyroll': 283, 'MX Player': 515, 'aha': 532, 'Sun NXT': 309, 'Hoichoi': 315, 'YouTube': 192
+    },
+
+    // Recommendation "where to watch" provider name -> app label above
+    providerApps: {
+        'Netflix': 'Netflix', 'Prime Video': 'Prime Video', 'Amazon Prime Video': 'Prime Video',
+        'JioHotstar': 'JioHotstar', 'Disney Plus Hotstar': 'JioHotstar', 'Apple TV': 'Apple TV',
+        'Apple TV Plus': 'Apple TV', 'YouTube': 'YouTube', 'Plex': 'Plex'
+    },
+
+    // The All apps screen lists applications only (store apps and a few preloaded ones; services and internals are left out).
+    //   include: ['AbCdEfGhIj.Name']   force an app id to appear
+    //   hide:    ['regex']              hide anything whose id or name matches
+    allApps: { include: [], hide: [] },
+
+    /*
+     * Control Center (Red key). Talks to Vetro (port 8099) through js/vetro.js only. Every command comes from APL Launcher's
+     * published source; where APL noted a value on another model (a Smart Monitor M8) the list is here so it can be corrected.
+     *   vetroHost      the TV's LAN address, if the app cannot reach Vetro on loopback (some 2025 TVs).
+     *   pictureModes   [code, name]: the codes the TV's AV service uses. Dynamic/Standard/Eco/Movie are APL's; add yours.
+     *   inputs         { type, label }: APL maps HDMI 1-4 to types 13-16 (TV = 0).
+     *   soundModes     [code, name] for Sound mode (APL: Standard 1, Amplify 5).
+     *   audioDevices   { name, mac }: Bluetooth speakers/headphones to switch sound to. Listing paired devices needs a
+     *                  privileged Tizen API, so they are named here: "TV speakers" is always offered.
+     */
+    controlCenter: {
+        vetroPort: 8099,
+        vetroHost: '',          // the TV's own LAN address, e.g. '<tv-ip>', if loopback is refused (set it in config.local.js)
+        pictureModes: [[65536, 'Dynamic'], [65537, 'Standard'], [65552, 'Eco'], [65538, 'Movie']],
+        inputs: [{ type: 13, label: 'HDMI 1' }, { type: 14, label: 'HDMI 2' }, { type: 15, label: 'HDMI 3' }, { type: 16, label: 'HDMI 4' }, { type: 0, label: 'TV' }],
+        soundModes: [[1, 'Standard'], [5, 'Amplify']],
+        audioDevices: [],
+        logUrl: ''                    // where Diagnostics > OK sends its report, e.g. 'http://<your-pc-ip>:8787/' (scripts/logserver.mjs)
+    },
+
+    // HDMI ports shown on the Sources screen (names only; the TV reports the ports)
+    inputs: [],
+
+    weather: { latitude: null, longitude: null, label: '' },
+    // width/height of the stored wallpaper. Measured on the TV: devicePixelRatio 1 and a 1920x1080 render surface,
+    // so anything larger is decoded and then downscaled. 1920x1080 ~8 MB decoded, 2560x1440 ~14 MB, 3840x2160 ~33 MB.
+    wallpaper: { query: 'nature landscape', width: 1920, height: 1080 },
+    // omdb: a free key from https://www.omdbapi.com/apikey.aspx, for the IMDb rating in the movie panel (none: no rating)
+    keys: { tmdb: '', traktClientId: '', traktClientSecret: '', unsplash: '', omdb: '' }
+};
+
+(function () {
+    'use strict';
+    var local = window.LAUNCHER_LOCAL;
+    if (!local) return;
+    function plain(v) { return v && typeof v === 'object' && !Array.isArray(v); }
+    Object.keys(local).forEach(function (k) {
+        if (plain(local[k]) && plain(window.LAUNCHER_CONFIG[k])) {
+            Object.keys(local[k]).forEach(function (i) { window.LAUNCHER_CONFIG[k][i] = local[k][i]; });
+        } else {
+            window.LAUNCHER_CONFIG[k] = local[k];
+        }
+    });
+})();
