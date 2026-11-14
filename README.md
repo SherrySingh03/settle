@@ -1,4 +1,6 @@
-# Settle
+<p align="center"><img src="docs/img/logo.svg" width="128" height="128" alt="Settle icon: a sun settling onto the horizon"></p>
+
+<h1 align="center">Settle</h1>
 
 A calm, fast home screen for Samsung Tizen TVs. Your apps on one dock, tonight's films under it, and the TV's
 settings one button away, without the ads and clutter of the stock Smart Hub.
@@ -87,6 +89,8 @@ and never commit `config.local.js`.**
 - `npm run preview` serves `src/` with stand-in data (`src/js/mock.js`, a fake app list and a fake Vetro), so
   everything can be tried with a keyboard: arrows, Enter, Esc for Back, and `d` / `c` / `g` / `e` for the
   Yellow / Red / Green / Blue keys.
+- `npm run icon` redraws the icon (`src/icon.png` for the TV, `docs/img/logo.svg` and `docs/img/icon-512.png`)
+  from one description of its shapes in `scripts/make-icon.mjs`.
 - `npm run logs` starts a small receiver on your computer for the Diagnostics report (Yellow, then OK on the TV).
 - Design budgets the code keeps to: no framework, under 150 KB of JavaScript, under 600 DOM nodes, animations of
   transform and opacity only (200 ms or less), no timer firing more than once a second, nothing polls, text 24 px
