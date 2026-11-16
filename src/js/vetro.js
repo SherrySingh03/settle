@@ -193,7 +193,7 @@
 
     function readAll() {
         var parts = Object.keys(ROWS).map(function (id) { return 'echo ' + rid(id) + ' $(' + AVOC + ROWS[id].get + ' 2>/dev/null)'; });
-        var cmd = parts.join('; ') + '; echo BT_BEGIN; ' + BT + 'get_connected_bt_speaker_info 2>&1; echo BT_END; echo WIFI_BEGIN; connmanctl services 2>&1 | grep -E "^\\*[A-Z]*[OR] "; echo WIFI_END';
+        var cmd = parts.join('; ') + '; echo BT_BEGIN; ' + BT + 'get_connected_bt_speaker_info 2>&1; echo BT_END';
         return exec(cmd, true).then(function (r) {
             if (!r || r.sent) return null;
             var out = String(r.output || ''), st = { v: {} };
@@ -201,8 +201,6 @@
             aiOn = st.v['p.mode'] === AI_PICTURE;
             var bt = /BT_BEGIN([\s\S]*?)BT_END/.exec(out);
             if (bt && !/error/i.test(bt[1])) { var m = /[0-9A-F]{2}(?::[0-9A-F]{2}){5}/i.exec(bt[1].toUpperCase()); st.btKnown = true; st.btMac = m ? m[0] : null; }
-            var wf = /WIFI_BEGIN([\s\S]*?)WIFI_END/.exec(out);
-            if (wf) { var wm = /^\*[A-Z]*[OR]\s+(.+?)\s+wifi_/m.exec(wf[1]); st.wifi = wm ? wm[1] : 'Not connected'; }
             return st;
         });
     }
@@ -216,7 +214,6 @@
             { id: 'sound', label: 'Sound mode', kind: 'page' },
             { id: 'output', label: 'Audio output', kind: 'choice' },
             { id: 'input', label: 'Input', kind: 'choice' },
-            { id: 'wifi', label: 'Wi-Fi', kind: 'run' },
             { id: 'bluetooth', label: 'Bluetooth', kind: 'run' },
             { id: 'brightness', label: 'Brightness', kind: 'slider', min: 0, max: 50, step: 2 }
         ];
@@ -268,7 +265,6 @@
         m.output = { value: !aud ? (offline() || '—') : (aud === 'tv' ? 'TV speakers' : (dev ? dev.name : 'Bluetooth speaker')), current: aud || null };
         var ci = currentInput() || (assumed.input != null ? options('input').filter(function (o) { return o.id === String(assumed.input); })[0] : null);
         m.input = { value: ci ? ci.label : '—', current: ci ? ci.id : null };
-        m.wifi = { value: st && st.wifi ? st.wifi : (offline() || '—'), current: null };
         m.bluetooth = { value: 'Find devices', current: null };
         return m;
     }
@@ -302,14 +298,6 @@
     }
 
     /* Switching inputs needs no Vetro: the app asks Samsung's TV viewer directly (as APL Launcher does first, Vetro second). */
-    // Launch an installed app by id with Tizen's own API (the widget has the application.launch privilege). Gives up after 3 s.
-    function launchNative(appId) {
-        return new Promise(function (ok, no) {
-            var t = setTimeout(function () { no(new Error('no answer')); }, 3000);
-            try { window.tizen.application.launch(appId, function () { clearTimeout(t); ok(); }, function (e) { clearTimeout(t); no(e); }); }
-            catch (e) { clearTimeout(t); no(e); }
-        });
-    }
 
     function inputNative(type, label, icon) {
         return new Promise(function (ok, no) {
@@ -369,24 +357,6 @@
                 return 'Opened on the TV';
             });
         }
-        if (id === 'wifi') {                                                       // the TV's network settings app: asked directly first, then through Vetro
-            var apps = [CC.wifiApp || 'com.samsung.tv.coba.setting.networksettings', 'org.tizen.NetworkSetting-Tizen'];
-            return (function tryApp(i) {
-                if (i >= apps.length) throw new Error('The TV did not open it');
-                if (!/^[A-Za-z0-9._-]+$/.test(apps[i])) return tryApp(i + 1);
-                var native = window.tizen && window.tizen.application && !backend;
-                return (native ? launchNative(apps[i]).then(function () { trace('wifi', 'tizen launch ' + apps[i], { output: 'accepted' }); return true; },
-                                                              function (e) { trace('wifi', 'tizen launch ' + apps[i], { output: 'refused: ' + (e && e.message) }); return false; })
-                               : Promise.resolve(false)).then(function (ok) {
-                    if (ok) return 'Opened on the TV';
-                    return exec('app_launcher -s ' + apps[i] + ' 2>&1', true).then(function (r) {
-                        trace('wifi', 'app_launcher -s ' + apps[i], r);
-                        if (r && !r.sent && /error|fail|not found|no such|unknown|invalid/i.test(String(r.output || ''))) return tryApp(i + 1);
-                        return 'Sent to the TV';
-                    });
-                });
-            })(0);
-        }
         if (id === 'input') {
             v = int(arg, 0, 20);
             var o = inputs().filter(function (i) { return i.type === v; })[0];
@@ -434,17 +404,6 @@
         });
     }
 
-    /* ---------- experiments (Diagnostics keys 1-3, 0 = undo) ----------
-       Fixed, reversible: set ONE AI setting, read the AI values back, record what the TV said. Nothing else is touched. */
-    var EXP = { 1: ['SetAiPictureOptimizer', 1], 2: ['SetAiIllumination', 1], 3: ['SetAiAudioSceneBased', 1] };
-    var EXP_READ = 'echo opt $(' + AVOC + 'GetAiPictureOptimizer i 0 2>&1); echo illum $(' + AVOC + 'GetAiIllumination 2>&1); echo scene $(' + AVOC + 'GetAiAudioSceneBased 2>&1); echo picmode $(' + AVOC + 'GetPictureMode i 0 2>&1)';
-    function experiment(n) {
-        var cmd;
-        if (n === 0) cmd = Object.keys(EXP).map(function (k) { return AVOC + EXP[k][0] + ' ii 0 1 2>&1'; }).join('; ');
-        else if (EXP[n]) cmd = AVOC + EXP[n][0] + ' ii ' + EXP[n][1] + ' 1 2>&1';
-        else return Promise.resolve();
-        return exec(cmd + '; ' + EXP_READ, true).then(function (r) { trace('exp' + n, cmd.replace(/busctl[^;]*?AvOutputControl /g, ''), r); }, function (e) { trace('exp' + n, 'failed', { output: e.message }); });
-    }
 
     /* ---------- capture: a read-only report of what this TV exposes (for diagnostics) ----------
        Nothing here sets anything. It lists the AV service's methods, reads every one-argument getter
@@ -456,7 +415,6 @@
             return exec(cmd, true).then(function (r) { out.push('##### ' + title + '\n' + (r && r.sent ? '(sent, output not readable)' : String((r && r.output) || '').trim()) + '\n'); },
                 function (e) { out.push('##### ' + title + '\n(failed: ' + e.message + ')\n'); });
         }
-        var avSvc = 'busctl --system introspect org.tizen.tv.avoc /org/tizen/tv/avoc org.tizen.tv.avoc.AvOutputControl 2>&1';
         return exec('true').then(function () { return ensureLink(); }).then(function (l) {
             out.push('Recent setter calls (what the TV answered)\n' + (traceLog.length ? traceLog.join('\n') : '(none this session)') + '\n');
             out.push('Recent key events: ' + ((window.__keyLog || []).join('  ') || 'none') + (window.__runaway ? '  [stuck-key repeats dropped: ' + window.__runaway + ']' : '') + '\n');
@@ -472,47 +430,14 @@
             }) : [];
             var chain = Promise.resolve();
             gets.forEach(function (g) { chain = chain.then(g); });
-            return chain.then(function () { say('AV service methods'); return exec(avSvc, true); });
-        }).then(function (r) {
-            var text = String((r && r.output) || ''), getters = [], plain = [];
-            out.push('##### AV service methods\n' + text.trim() + '\n');
-            text.split('\n').forEach(function (ln) {
-                var m = /^\.(Get[A-Za-z0-9]+)\s+method\s+([iuy])\s/.exec(ln.trim());
-                if (m && getters.length < 150) getters.push([m[1], m[2]]);
-                var n = /^\.((?:Get|AudioGet)[A-Za-z0-9]+)\s+method\s+-\s+(?:ii|ui|i)\s/.exec(ln.trim());
-                if (n && plain.length < 150) plain.push(n[1]);
-            });
-            var chunks = [];
-            for (var i = 0; i < getters.length; i += 25) chunks.push(getters.slice(i, i + 25));
-            var seq = Promise.resolve();
-            chunks.forEach(function (c, k) {
-                seq = seq.then(function () {
-                    return run('AV getters ' + (k + 1) + '/' + chunks.length, c.map(function (g) { return 'echo ' + g[0] + ' $(' + AVOC + g[0] + ' ' + g[1] + ' 0 2>&1)'; }).join('; '));
-                });
-            });
-            for (var j = 0; j < plain.length; j += 25) (function (c, k, t) {
-                seq = seq.then(function () { return run('AV no-argument getters ' + (k + 1) + '/' + t, c.map(function (g) { return 'echo ' + g + ' $(' + AVOC + g + ' 2>&1)'; }).join('; ')); });
-            })(plain.slice(j, j + 25), j / 25, Math.ceil(plain.length / 25));
-            return seq;
-        }).then(function () {
-            var q = function (g, t) { return [0, 1, 2, 3, 4].map(function (a) { return 'echo ' + g + a + ' $(' + AVOC + g + ' ' + t + ' ' + a + ' 2>&1)'; }).join('; '); };
-            return run('Sound getters tried with arguments 0-4', q('GetDialogClarity', 'u') + '; ' + q('GetSoundMode', 'u') + '; ' + q('GetSoundOnVideoCall', 'u') + '; echo CheckDialogClarity $(' + AVOC + 'CheckDialogClarity 2>&1)');
-        }).then(function () {
-            return run('Settings store (vconf), sound/AI related keys', '(which vconftool 2>&1; for d in db memory file; do vconftool get -r $d 2>&1; done) | grep -i -E "vconftool|sound|audio|voice|amplif|adaptive|dialog|volume|speaker|ai_|_ai" | head -300');
-        }).then(function () {
-            return run('Network and Bluetooth state', '(connmanctl state; connmanctl technologies; connmanctl services) 2>&1 | head -60; busctl --system tree org.projectx.bt 2>&1 | head -40; busctl --system tree net.connman 2>&1 | head -30; (which hciconfig bluetoothctl wpa_cli iwconfig; hciconfig; ip -brief addr) 2>&1 | head -30').then(function () {
-                return run('AI services (structure only)', 'for s in org.tizen.AISControlManager org.projectx.aitech; do echo "=== $s"; for p in $(busctl --system tree $s --list 2>/dev/null | head -8); do echo "--- $p"; busctl --system introspect $s $p --no-pager 2>&1 | grep -v "org.freedesktop.DBus" | head -60; done; done');
-            });
+            return chain;
         }).then(function () {
             return run('Running apps (app_launcher -S)', 'app_launcher -S 2>&1 | head -80');
         }).then(function () {
-            return run('Bluetooth manager methods', 'gdbus introspect --system --dest com.samsung.tv.bt.connectionmanager --object-path /com/samsung/tv/bt/connectionmanager 2>&1');
-        }).then(function () {
-            return run('Bluetooth connected speaker', BT + 'get_connected_bt_speaker_info 2>&1');
-        }).then(function () {
-            return run('Bluetooth paired devices', BT + 'get_paired_device_info 2>&1; ' + BT + 'get_devices_info 2>&1');
-        }).then(function () {
-            return run('Related services on the system bus', "busctl --system list --no-pager 2>&1 | grep -i -E 'avoc|audio|sound|picture|bt|blue|ai|speaker'");
+            // Trailers: where the TV's DIAL service listens and what it answers for YouTube (the screen id the cast needs).
+            return run('YouTube DIAL', "echo tools: $(command -v curl wget busybox); (netstat -ltn 2>/dev/null || ss -ltn 2>/dev/null) | grep -E ':(8080|8001|8002|7678|9197) ' ; " +
+                "for u in http://127.0.0.1:8080/ws/apps/YouTube http://127.0.0.1:8001/ws/apps/YouTube http://127.0.0.1:8080/ws/app/YouTube; do echo \"== $u\"; " +
+                "curl -s -m 3 -i -H 'Origin: https://www.youtube.com' \"$u\" 2>&1 | head -c 1500 || wget -q -S -T 3 -O - --header='Origin: https://www.youtube.com' \"$u\" 2>&1 | head -c 1500; echo; done; true");
         }).then(function () { return out.join('\n'); }, function (e) { out.push('FAILED: ' + e.message); return out.join('\n'); });
     }
 
@@ -531,6 +456,19 @@
             if (!/^[A-Za-z0-9._-]+$/.test(appId || '')) return Promise.reject(new Error('bad app id'));
             return exec('app_launcher -k ' + appId + ' 2>&1', true).then(function (r) { trace('kill', 'app_launcher -k ' + appId, r); return r; });
         },
+        // Uninstall an app: Tizen's package tool (pkgcmd -u -n <package id>), else Samsung's TV tool (vd_appuninstall <app
+        // id>) when the first is missing or refuses. Resolves { output } with everything the TV said; whether the app is
+        // really gone is checked by the caller against the TV's app list, not read from this output.
+        uninstall: function (pkgId, appId) {
+            var ok = /^[A-Za-z0-9._-]+$/;
+            if (!ok.test(pkgId || '') || !ok.test(appId || '')) return Promise.reject(new Error('bad package id'));
+            var cmd = 'pkgcmd -u -n ' + pkgId + ' 2>&1; r=$?; echo "pkgcmd exit $r"; ' +
+                'if [ $r -ne 0 ] && command -v vd_appuninstall >/dev/null 2>&1; then vd_appuninstall ' + appId + ' 2>&1; echo "vd_appuninstall exit $?"; fi';
+            return exec(cmd, true).then(function (r) {
+                trace('uninstall', pkgId + ' / ' + appId, r);
+                return { output: r && r.sent ? '(sent; the TV\'s answer is not readable)' : String((r && r.output) || '').trim() };
+            });
+        },
         // MemAvailable in MB, from /proc/meminfo. Rejects when Vetro is not up or the output cannot be read.
         memAvailable: function () {
             return exec('grep MemAvailable /proc/meminfo', true).then(function (r) {
@@ -539,7 +477,17 @@
                 return Math.round(+m[1] / 1024);
             });
         },
-        experiment: experiment,
+        // YouTube's cast screen id, from the TV's DIAL service (GET :8080/ws/apps/YouTube -> <screenId>), read on the TV
+        // itself: a web app's own request is refused there. Only answers while YouTube is running. curl, else busybox wget.
+        youtubeScreen: function () {
+            var u = 'http://127.0.0.1:8080/ws/apps/YouTube', o = 'Origin: https://www.youtube.com';
+            return exec("(curl -s -m 3 -H '" + o + "' " + u + " || wget -q -T 3 -O - --header='" + o + "' " + u + ") 2>&1", true).then(function (r) {
+                trace('youtube', 'DIAL GET /ws/apps/YouTube', r);
+                var m = /<screenId>\s*([^<\s]+)\s*<\/screenId>/.exec((r && r.output) || '');
+                if (!m) throw new Error('no screen id');
+                return m[1];
+            });
+        },
         trace: function () { return traceLog.slice(); },
         mode: function () { return link.mode; },
         setBackend: function (fn) { backend = fn; }          // preview / tests only

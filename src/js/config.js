@@ -10,6 +10,7 @@
  *   logo: 'img/brands/x.png'          a bundled logo used INSTEAD of the app's own icon (for apps whose package
  *                                     ships only Samsung's generic pinwheel)
  *   useBrand: true                   show the bundled dark logo even when the TV has an icon of its own
+ *   prefer: ['app.id']                the first of these installed wins over other matches (the rest are left out)
  *   chip: true                        always show the name, never the icon (for apps whose package ships
  *                                     only Samsung's generic pinwheel)
  */
@@ -20,7 +21,8 @@ window.LAUNCHER_CONFIG = {
 
     apps: [
         { id: 'org.tizen.netflix-app', label: 'Netflix', brand: 'netflix', useBrand: true, tone: '#2B3A4A' },
-        { match: 'youtube', label: 'YouTube', brand: 'youtube', useBrand: true, tone: '#3A2F2A' },
+        // prefer: Samsung's own YouTube (signed in) over the old store app when a TV has both
+        { match: 'youtube', prefer: ['com.samsung.tv.cobalt-yt'], label: 'YouTube', brand: 'youtube', useBrand: true, tone: '#3A2F2A' },
         { id: 'org.tizen.primevideo', label: 'Prime Video', brand: 'primevideo', useBrand: true, tone: '#26363A' },
         { match: 'hotstar', label: 'JioHotstar', tone: '#14194a', logo: 'img/brands/jiohotstar.png' },
         { match: 'spotify', label: 'Spotify', brand: 'spotify', tone: '#2C3A2E' },
@@ -33,8 +35,15 @@ window.LAUNCHER_CONFIG = {
     //   timeoutMs: 0 turns it off. The Control Center's Screensaver tile overrides this on the TV.
     screensaver: { appId: 'AerialScr0.AerialScreensaver', timeoutMs: 120000 },
 
-    // The Samsung Home tile (always on the dock, after Sources): tried in this order. From the TV's installed-apps list.
-    samsungHome: ['com.samsung.tv.coba.newhome', 'com.samsung.tv.coba.edenview'],
+    // The Samsung Home button: tried in this order until one actually takes the screen (all are on the 2025 QN70F's
+    // app list; home.media and home.sidebar are the ones running as Smart Hub there). Add your TV's if it differs.
+    samsungHome: ['com.samsung.tv.home.media', 'com.samsung.tv.home.sidebar', 'com.samsung.tv.coba.newhome', 'com.samsung.tv.csfs', 'com.samsung.tv.coba.edenview'],
+
+    // Trailers play in the YouTube app through YouTube's cast protocol, which needs the app's screen id. Settle reads
+    // it through Vetro the first time (YouTube must be installed) and keeps it. Without Vetro, read it once from a
+    // computer while YouTube is open on the TV:  curl -H "Origin: https://www.youtube.com" http://<tv-ip>:8080/ws/apps/YouTube
+    // and copy <screenId> into config.local.js as  youtube: { screenId: '...' }.
+    youtube: { screenId: '' },
 
     // Dynamic backdrop. images:false keeps only the colour fields (no backdrop pictures are fetched or decoded):
     // the lightest setting, if a screen with a lot going on feels slow.

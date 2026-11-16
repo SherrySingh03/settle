@@ -103,13 +103,6 @@
         }).then(function () { capturing = false; }, function () { capturing = false; });
     }
 
-    // keys 1-3 try one AI setting each, 0 puts them back; the TV's answer is listed under 'Last Vetro setter calls'
-    function experiment(el, n) {
-        if (capturing || !window.Vetro || !window.Vetro.experiment) return;
-        capturing = true;
-        el.textContent += '\n\nEXPERIMENT ' + n + ' running…';
-        window.Vetro.experiment(n).then(function () { capturing = false; show(el, lastItems); }, function () { capturing = false; });
-    }
 
-    window.Diag = { show: show, capture: capture, experiment: experiment, repaint: function () { if (repaintFn) repaintFn(); } };
+    window.Diag = { show: show, capture: capture, repaint: function () { if (repaintFn) repaintFn(); } };
 })();

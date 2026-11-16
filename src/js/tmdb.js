@@ -226,11 +226,14 @@
             rest = rank(rest);                                                     // streaming on your apps first, then rent on them, then elsewhere
             return mine.concat(rest.slice(0, N));                                  // the watchlist row, then a full For tonight row
         }).then(function (items) {
-            if (!items.length) { if (manual) throw say('Nothing new found'); return; }
+            if (!items.length) { if (manual) throw say('Nothing new found'); if (window.Settle && window.Settle.recsFailed) window.Settle.recsFailed(); return; }
             shownAdd(items.filter(function (r) { return !r.wl; }).map(function (r) { return r.tmdb; }));
             save({ t: Date.now(), day: today(), region: REG, src: src, items: items });
             if (window.Settle) window.Settle.setRecs(items, manual === true);
-        }).catch(function (e) { if (manual) throw (e && e.friendly ? e : say('Could not refresh')); /* otherwise silent: cached rail stays */ });
+        }).catch(function (e) {
+            if (manual) throw (e && e.friendly ? e : say('Could not refresh'));
+            if (window.Settle && window.Settle.recsFailed) window.Settle.recsFailed();      // only shows anything when the rail is empty
+        });
     }
 
     // Keep the cached copy in step with a watchlist toggle so a reload shows the same state.
@@ -288,7 +291,48 @@
         }).catch(function () { /* no rating shown */ });
     }
 
-    window.Recs = { imdb: imdb, dismiss: dismiss, forget: forget, addWatched: addWatched, short: short, cached: cached, refresh: refresh, refreshNow: function () { return refresh(true, true); }, setWl: setWl, hasKey: !!KEY };
+    /* The details popup: one TMDB call per title, only when the popup opens (movie/{id} with credits and watch
+       providers appended), kept in memory for the session (the last 20). */
+    var more = {}, moreIds = [];
+    // The YouTube id of the film's trailer: an official trailer first, then any trailer, then a teaser.
+    function trailerOf(list) {
+        var yt = (list || []).filter(function (v) { return v.site === 'YouTube' && v.key; });
+        function score(v) { return (v.type === 'Trailer' ? 0 : v.type === 'Teaser' ? 2 : 4) + (v.official ? 0 : 1); }
+        yt = yt.filter(function (v) { return v.type === 'Trailer' || v.type === 'Teaser'; }).sort(function (a, b) { return score(a) - score(b); });
+        return yt.length ? yt[0].key : '';
+    }
+    function details(r) {
+        if (!r || !r.tmdb || !KEY) return Promise.resolve(null);
+        if (more[r.tmdb]) return Promise.resolve(more[r.tmdb]);
+        return get('/movie/' + r.tmdb, 'append_to_response=credits,watch/providers,recommendations,videos&language=en-US').then(function (d) {
+            var wp = (d['watch/providers'] && d['watch/providers'].results && d['watch/providers'].results[REG]) || {};
+            var crew = (d.credits && d.credits.crew) || [], cast = (d.credits && d.credits.cast) || [];
+            function tag(list) { return names(list).map(function (n) { return { name: n, onTv: onTv(n) }; }); }
+            var lang = '';
+            try { lang = d.original_language ? new Intl.DisplayNames(['en'], { type: 'language' }).of(d.original_language) : ''; } catch (e) { lang = d.original_language || ''; }
+            var x = {
+                tagline: d.tagline || '', overview: d.overview || '',
+                genres: (d.genres || []).map(function (g) { return g.name; }),
+                released: d.release_date || '', runtime: runtime(d.runtime), language: lang,
+                directors: crew.filter(function (c) { return c.job === 'Director'; }).map(function (c) { return c.name; }).slice(0, 2),
+                cast: cast.slice(0, 5).map(function (c) { return c.name; }),
+                stream: tag(wp.flatrate), rent: tag((wp.rent || []).concat(wp.buy || [])),
+                trailer: trailerOf(d.videos && d.videos.results),
+                // More like this: TMDB's recommendations for the film, minus anything watched or dismissed here
+                like: ((d.recommendations && d.recommendations.results) || []).filter(function (m) {
+                    return m.poster_path && !m.adult && watchedLocal().indexOf(m.id) < 0 && dismissed().indexOf(m.id) < 0;
+                }).slice(0, 8).map(function (m) { return { tmdb: m.id, title: m.title || m.original_title, art: IMG + m.poster_path }; })
+            };
+            more[r.tmdb] = x; moreIds.push(r.tmdb);
+            if (moreIds.length > 20) delete more[moreIds.shift()];
+            return x;
+        }).catch(function () { return null; });
+    }
+
+    // A full rail item for any film (a "More like this" pick): the same call and shape the rail uses.
+    function item(tmdb) { return KEY ? detail(tmdb) : Promise.resolve(null); }
+
+    window.Recs = { imdb: imdb, details: details, item: item, dismiss: dismiss, forget: forget, addWatched: addWatched, short: short, cached: cached, refresh: refresh, refreshNow: function () { return refresh(true, true); }, setWl: setWl, hasKey: !!KEY };
     window.addEventListener('load', function () { refresh(); });
     // Back from another app: refresh if the day changed, or if we were away long enough that picks may have moved.
     document.addEventListener('visibilitychange', function () { if (document.hidden) hiddenAt = Date.now(); });

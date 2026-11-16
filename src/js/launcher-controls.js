@@ -36,9 +36,13 @@
 
     function merge(m) { m = m || {}; Object.keys(IDLE).forEach(function (k) { m[k] = IDLE[k]; }); m.screensaver = ssView(); return m; }
 
+    // Recent apps: opens the app switcher (the panel closes first). It goes after Input, where Wi-Fi used to be.
+    var RECENT = { id: 'recent', label: 'Recent apps', kind: 'run' };
+    IDLE.recent = { value: 'See what’s open', current: null };
+
     function compose(base) {
         return {
-            controls: function () { return base.controls().concat(EXTRA); },
+            controls: function () { var c = base.controls(), i = c.map(function (x) { return x.id; }).indexOf('input') + 1; return c.slice(0, i).concat([RECENT], c.slice(i), EXTRA); },
             page: base.page,
             options: function (id) { return id === 'screensaver' ? SS.map(function (o) { return { id: String(o[0]), label: o[1] }; }) : base.options(id); },
             cached: function () { return merge(base.cached()); },
@@ -48,6 +52,11 @@
                     var ms = parseInt(arg, 10);
                     if (!SS.some(function (o) { return o[0] === ms; })) return Promise.reject(new Error('unknown choice'));
                     window.Screensaver.setTimeoutMs(ms);
+                    return Promise.resolve();
+                }
+                if (id === 'recent') {
+                    if (!window.Settle || !window.Settle.openSwitcher) return Promise.reject(new Error('Not available'));
+                    window.Settle.openSwitcher(true);
                     return Promise.resolve();
                 }
                 if (id === 'wallpaper') {

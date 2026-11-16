@@ -11,7 +11,8 @@
  *     full-screen gradient); each pair of colours is computed once and cached, misses included
  *   - at most TWO backdrops are decoded at once (current + incoming); the outgoing one is released the
  *     moment its fade ends
- *   - the network and the decode wait until focus has rested 300 ms, so sweeping across the dock fires nothing
+ *   - the network and the decode wait until focus has rested 300 ms, so sweeping across the dock fires nothing; a rail
+ *     title waits longer (spec.delay) with the popcorn loader on the right, so moving along the rail stays quick
  *   - one backdrop ahead, in the direction of travel, is only fetched into the HTTP cache, not decoded
  */
 (function () {
@@ -121,6 +122,7 @@
         var next = imgs[1 - ii];
         function go() {
             if (tok !== token) { release(next); return; }
+            loaderOff();
             var old = imgs[ii], had = imgOn;
             next.classList.add('a'); old.classList.remove('a');
             ii = 1 - ii; imgOn = true;
@@ -128,8 +130,8 @@
         }
         next.onload = null;
         next.src = url;
-        if (next.decode) next.decode().then(go, function () { if (tok === token) release(next); });
-        else next.onload = go;
+        if (next.decode) next.decode().then(go, function () { if (tok === token) { release(next); loaderOff(); } });
+        else { next.onload = go; next.onerror = function () { if (tok === token) loaderOff(); }; }
     }
 
     function prefetch(url) {                                    // warm the HTTP cache only: nothing is decoded
@@ -141,28 +143,50 @@
 
     /* ---------- the API ---------- */
 
-    // spec: { colors: fn -> [c1,c2], image: fn(cb) -> cb(url|null) (called once focus has rested), ahead: fn -> [urls] }
+    /* The loader: a little popcorn bucket on the right while a slow backdrop is on its way. It only appears once
+       focus has rested (a sweep never shows it), and its animation runs only while it is visible. */
+    var loader = document.getElementById('bdload'), LINES = ['Popping the popcorn…', 'Dimming the lights…', 'Finding the good seats…',
+        'Shushing the row behind you…', 'Rewinding the tape…', 'Unwrapping the snacks…', 'Adjusting the tracking…'];
+    function loaderOn() {
+        if (!loader) return;
+        loader.lastChild.textContent = LINES[Math.floor(Math.random() * LINES.length)];
+        loader.classList.add('on');
+    }
+    function loaderOff() { if (loader) loader.classList.remove('on'); }
+
+    // spec: { colors: fn -> [c1,c2], image: fn(cb) -> cb(url|null) (called once focus has rested), ahead: fn -> [urls],
+    //         delay: ms of rest before the picture is fetched (default 300), loader: true to show the loader meanwhile,
+    //         loaderAt: ms of rest before the loader appears (default 300) }
     function focus(k, spec) {
         if (k === key) return;
         key = k; var tok = ++token;
         clearTimeout(timer);
+        loaderOff();
         root.classList.add('on'); stage.classList.add('bd-on');
         setField((spec.colors && spec.colors()) || NEUTRAL);   // immediately, from what is already decoded
         hideImage();                                            // the previous focus's picture does not describe this one
         if (!spec.image || !IMAGES) return;
-        timer = setTimeout(function () {
+        var wait = Math.max(DEBOUNCE, spec.delay || 0), first = Math.min(wait, Math.max(DEBOUNCE, spec.loaderAt || 0));
+        function fetchIt() {
             spec.image(function (path) {
-                if (tok !== token || !path) return;             // moved on, or nothing available: the colour field stays
+                if (tok !== token) return;
+                if (!path) { loaderOff(); return; }             // nothing available: the colour field stays
                 showImage(path.charAt(0) === '/' ? BD + path : path, tok);
                 if (spec.ahead) spec.ahead().forEach(function (p) { if (p) prefetch(p.charAt(0) === '/' ? BD + p : p); });
             });
-        }, DEBOUNCE);
+        }
+        timer = setTimeout(function () {
+            if (!spec.loader || wait <= first) return fetchIt();
+            loaderOn();                                         // rested: show the bucket, then fetch after the rest of the wait
+            timer = setTimeout(fetchIt, wait - first);
+        }, first);
     }
 
     function rest() {
         if (key === null) return;
         key = null; token++;
         clearTimeout(timer);
+        loaderOff();
         hideImage();
         root.classList.remove('on'); stage.classList.remove('bd-on');
     }

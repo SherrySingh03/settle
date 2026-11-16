@@ -4,7 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=1920, height=1080">
 <title>Settle</title>
-<link rel="icon" href="icon.png">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/controlcenter.css">
@@ -13,6 +12,7 @@
 <div id="stage" class="m-rest">
   <img id="wall" src="img/wall.svg" alt="" width="1920" height="1080">
   <div id="bd"><canvas class="bf bf0" width="64" height="36"></canvas><canvas class="bf bf1" width="64" height="36"></canvas><img class="bi bi0" alt=""><img class="bi bi1" alt=""><canvas id="bs" width="64" height="36"></canvas></div>
+  <div id="bdload"><div class="bucket"><span class="k k1"></span><span class="k k2"></span><span class="k k3"></span><svg width="132" height="132" viewBox="0 0 120 120" aria-hidden="true"><g fill="#F4EBD0"><circle cx="40" cy="42" r="12"/><circle cx="59" cy="33" r="14"/><circle cx="78" cy="42" r="12"/><circle cx="50" cy="49" r="11"/><circle cx="69" cy="49" r="11"/></g><path d="M24 52 H96 L86 114 H34 Z" fill="#EDE6D8"/><path d="M42 52 H54 L52 114 H40 Z M66 52 H78 L80 114 H68 Z" fill="#FFB23F"/><rect x="20" y="48" width="80" height="9" rx="4.5" fill="#FFB23F"/><circle cx="52" cy="78" r="3.6" fill="#1C1406"/><circle cx="68" cy="78" r="3.6" fill="#1C1406"/><path d="M53 88 Q60 95 67 88" fill="none" stroke="#1C1406" stroke-width="3" stroke-linecap="round"/></svg></div><div class="bl-text"></div></div>
 
   <div id="amb-rest" class="amb">
     <div class="clk96"><span class="hh">19</span><i>:</i><span class="mm">06</span></div>
@@ -42,10 +42,12 @@
     <div id="h-meta"><span id="h-mt"></span><span id="h-imdb"><b>IMDb</b><span></span></span></div>
     <div id="h-desc"></div>
     <div id="acts">
-      <button id="a1" class="btn"></button>
-      <button id="a2" class="btn"></button>
-      <button id="a3" class="btn"></button>
-      <button id="a4" class="btn"></button>
+      <button id="a1" class="btn pri"></button>
+      <button id="a5" class="btn ic"></button>
+      <button id="a2" class="btn ic"></button>
+      <button id="a3" class="btn ic"></button>
+      <button id="a4" class="btn ic"></button>
+      <span id="a-cap"></span>
     </div>
   </div>
 
@@ -53,6 +55,7 @@
     <div id="dock"></div>
     <div id="rail">
       <div id="rlabel"><span class="sq"></span><span>For tonight</span></div>
+      <div id="rempty"></div>
       <div id="rtrack"></div>
     </div>
     <div id="rail2">
@@ -62,13 +65,14 @@
   </div>
 
   <div id="toast"></div>
-  <div id="diag"><div id="d-title">Diagnostics</div><div id="d-body"></div><div id="d-hint">OK: capture a Vetro report · Right: try the next AI setting · Left: undo · Back: close</div></div>
+  <div id="diag"><div id="d-title">Diagnostics</div><div id="d-body"></div><div id="d-hint">OK: capture a Vetro report · Back: close</div></div>
   <div id="bar"></div>
   <div id="trakt"><div id="t-title">Connect Trakt</div><div id="t-step">On your phone, open</div><div id="t-url"></div><div id="t-step2">and enter this code</div><div id="t-code"></div><div id="t-status"></div><div id="t-hint">Press Back to cancel</div></div>
   <div id="apps"><div id="a-title">All apps</div><div id="a-clip"><div id="a-grid"></div></div><div id="a-hint">Hold OK, or press the blue key, to add, replace or remove an app on the dock</div></div>
   <div id="sw"><div id="sw-title">Open apps</div><div id="sw-mem"></div><div id="sw-row"></div><div id="sw-hint">OK: return · ▲: close · Back: Home</div></div>
   <div id="cc"></div>
   <div id="launchfx"></div>
+  <div id="dt"><div id="dt-panel"><div id="dt-poster"></div><div id="dt-body"><div id="dt-title"></div><div id="dt-tag"></div><div id="dt-meta"><span id="dt-mt"></span><span id="dt-imdb"><b>IMDb</b><span></span></span></div><div id="dt-desc"></div><div id="dt-facts"></div><div id="dt-acts"><button id="dt-open" class="btn pri"></button><button id="dt-tr" class="btn"></button><button id="dt-wl" class="btn"></button></div></div></div><div id="dt-like"><div id="dt-lhead"><span id="dt-ll">More like this</span><span id="dt-hint">▼ More like this · OK · Back</span></div><div id="dt-lrow"></div></div></div>
   <div id="rate"><div id="rt-panel"><div id="rt-title"></div><div id="rt-sub">Mark as watched. How was it?</div><div id="rt-row"></div><div id="rt-val"></div><div id="rt-fav"></div><div id="rt-skip">Watched, no rating</div><div id="rt-hint">Left and Right to pick · OK to save · Down for more · Back to cancel</div></div></div>
   <div id="sheet"><div id="sh-panel"><div id="sh-title"></div><div id="sh-sub"></div><div id="sh-list"></div></div></div>
   <div id="sources"><div id="s-title">Sources</div><div id="s-list"></div></div>
@@ -85,6 +89,8 @@
 <script src="js/wallpaper.js"></script>
 <script src="js/trakt.js"></script>
 <script src="js/tmdb.js"></script>
+<script src="js/deeplink.js"></script>
+<script src="js/youtube.js"></script>
 <script src="js/appinfo.js"></script>
 <script src="js/backdrop.js"></script>
 <script src="js/vetro.js"></script>

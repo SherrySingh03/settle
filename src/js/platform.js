@@ -99,11 +99,34 @@
         try { if (ids) localStorage.setItem(DOCK_KEY, JSON.stringify(ids)); else localStorage.removeItem(DOCK_KEY); } catch (e) { /* silent */ }
     }
 
+    // prefer: ['app.id', ...] in a config entry: the first of these that is installed wins over the other matches (a TV
+    // with two YouTube apps: Samsung's own, signed in, and the old store one).
+    function preferred(entry, used) {
+        var ids = entry.prefer || [];
+        for (var i = 0; i < ids.length; i++) {
+            var a = raw.filter(function (x) { return x.id === ids[i] && !(used && used[x.id]); })[0];
+            if (a) return a;
+        }
+        return null;
+    }
+    // An app that matches a config entry whose preferred app is installed, without being that app: a duplicate, left out
+    // of All apps and never opened in its place.
+    function isDupe(a, cfg) {
+        return (cfg.apps || []).some(function (e) {
+            if (!e.prefer || !e.match) return false;
+            var p = preferred(e);
+            if (!p || p.id === a.id) return false;
+            var re = new RegExp(e.match, 'i'), n = norm(a.name);
+            // same name only: YouTube Kids or YouTube TV match "youtube" too, but are other apps
+            return (re.test(a.id) || re.test(a.name || '')) && (n === norm(p.name) || n === norm(e.label));
+        });
+    }
+
     function defaultDock(cfg) {
         var me = selfId(), used = {}, out = [];
         cfg.apps.forEach(function (entry) {
             var re = entry.match ? new RegExp(entry.match, 'i') : null;
-            var hit = raw.filter(function (a) {
+            var hit = preferred(entry, used) || raw.filter(function (a) {
                 if (used[a.id] || a.id === me) return false;
                 if (entry.id) return a.id === entry.id;
                 return (re.test(a.id) || re.test(a.name)) && !NOISE.test(a.id + ' ' + a.name);
@@ -128,7 +151,12 @@
         var saved = savedDock(), items;
         if (saved) {
             items = saved.map(function (id) { return raw.filter(function (a) { return a.id === id; })[0]; })
-                .filter(Boolean).map(function (a) { return decorate(a, cfg); });
+                .filter(Boolean).map(function (a) {                           // a duplicate saved earlier: its preferred twin instead
+                    if (!isDupe(a, cfg)) return a;
+                    var e = (cfg.apps || []).filter(function (x) { return x.prefer && preferred(x) && entryFor(a, cfg) === x; })[0];
+                    return (e && preferred(e)) || a;
+                })
+                .filter(function (a, i, all) { return all.indexOf(a) === i; }).map(function (a) { return decorate(a, cfg); });
         } else {
             items = defaultDock(cfg);
         }
@@ -140,7 +168,7 @@
 
     function buildCatalog(cfg) {
         var seen = {}, me = selfId(), out = [];
-        defaultDock(cfg).concat(raw.filter(function (a) { return a.id !== me && isConsumer(a); }).map(function (a) { return decorate(a, cfg); }))
+        defaultDock(cfg).concat(raw.filter(function (a) { return a.id !== me && isConsumer(a) && !isDupe(a, cfg); }).map(function (a) { return decorate(a, cfg); }))
             .forEach(function (it) { if (!seen[it.id]) { seen[it.id] = 1; out.push(it); } });
         catalog = out;
     }
@@ -156,7 +184,7 @@
         if (hiddenIds()[a.id]) return false;
         if (pinned[a.id] || (o.include || []).indexOf(a.id) >= 0) return true;
         if ((o.hide || []).some(function (r) { return new RegExp(r, 'i').test(a.id + ' ' + a.name); })) return false;
-        if (INTERNAL.indexOf(a.id) >= 0) return false;
+        if (INTERNAL.indexOf(a.id) >= 0 || isDupe(a, cfg)) return false;
         return isConsumer(a);
     }
 
@@ -226,6 +254,8 @@
     function refresh() {
         if (!HAS) {
             var extra = (window.MOCK && window.MOCK.installLater) || [];          // preview: apps "installed" while running
+            var gone = (window.MOCK && window.MOCK.removeLater) || [];           // ... and "uninstalled"
+            if (gone.length) { raw = raw.filter(function (a) { return gone.indexOf(a.id) < 0; }); window.MOCK.removeLater = []; if (!extra.length) { buildCatalog(lastCfg); return Promise.resolve(true); } }
             if (!extra.length) return Promise.resolve(false);
             raw = raw.concat(extra.map(function (n) { return { id: 'mock.' + n, name: n, packageId: '', iconPath: '', show: true }; }));
             window.MOCK.installLater = [];
@@ -267,7 +297,15 @@
         var l = recent().filter(function (x) { return x !== id; });
         l.unshift(id);
         try { localStorage.setItem(RECENT_KEY, JSON.stringify(l.slice(0, 30))); } catch (e) { /* silent */ }
+        var t = launchTimes(), ks;
+        t[id] = Date.now();
+        ks = Object.keys(t);
+        if (ks.length > 30) ks.sort(function (a, b) { return t[a] - t[b]; }).slice(0, ks.length - 30).forEach(function (k) { delete t[k]; });
+        try { localStorage.setItem(TIMES_KEY, JSON.stringify(t)); } catch (e) { /* silent */ }
     }
+    // When each app was last opened from Settle (the switcher's "opened 12 min ago").
+    var TIMES_KEY = 'settle.launchedat.v1';
+    function launchTimes() { try { var m = JSON.parse(localStorage.getItem(TIMES_KEY)); return m && typeof m === 'object' ? m : {}; } catch (e) { return {}; } }
 
     function launch(id, onFail) {
         if (!id) return;                                                 // a favourite shown before the app list arrived
@@ -287,6 +325,31 @@
             });
         }, Promise.reject(new Error('none')));
     }
+
+    // One launch attempt, not wrapped by the launch animation: resolves when the TV accepts it, rejects otherwise.
+    function tryLaunch(id) {
+        return new Promise(function (ok, no) {
+            if (!HAS) { console.log('[launch]', id); return ok(id); }
+            try { tizen.application.launch(id, function () { ok(id); }, function (e) { note('launch', id, e); no(e); }); } catch (e) { note('launch', id, e); no(e); }
+        });
+    }
+
+    // Opens an app at a title: Samsung's deep-link convention (the one Smart Hub preview tiles use), an app control
+    // with operation eden_resume and the data as  PAYLOAD = '{"values": "<data>"}'. Resolves when the TV accepts it;
+    // whether the app then shows the title is up to the app.
+    function launchDeep(id, data) {
+        noteLaunch(id);
+        return new Promise(function (ok, no) {
+            if (!HAS) { console.log('[deeplink]', id, data); return ok(id); }
+            try {
+                var ctl = new tizen.ApplicationControl('http://samsung.com/appcontrol/operation/eden_resume', null, null, null,
+                    [new tizen.ApplicationControlData('PAYLOAD', [JSON.stringify({ values: data })])]);
+                tizen.application.launchAppControl(ctl, id, function () { ok(id); }, function (e) { note('deeplink', id, e); no(e); });
+            } catch (e) { note('deeplink', id, e); no(e); }
+        });
+    }
+    // The installed app for a "where to watch" provider name, or null.
+    function providerApp(name) { return byLabel((window.LAUNCHER_CONFIG.providerApps || {})[name]) || byLabel(name) || null; }
 
     /* ---------- running apps (the app switcher) ---------- */
 
@@ -369,6 +432,12 @@
 
     window.Platform = {
         hasTizen: HAS, apps: apps, ready: ready, isInstalled: isInstalled, launch: launch, launchProvider: launchProvider,
+        launchDeep: launchDeep, providerApp: providerApp,
+        // Never offered for uninstalling: Settle itself and Vetro (Settle depends on both). The TV refuses its own apps.
+        canUninstall: function (id) {
+            var a = raw.filter(function (x) { return x.id === id; })[0];
+            return !!a && (!HAS || !!a.packageId) && a.id !== selfId() && !/vetro/i.test(a.id + ' ' + (a.name || '')) && !/^SettleTv01\./.test(a.id);
+        }, appById: function (id) { return catalog.filter(function (a) { return a.id === id; })[0] || null; },
         sources: sources, openSource: openSource, exit: exit,
         // dock editing
         allApps: function () { return catalog.slice(); },
@@ -378,7 +447,8 @@
         source: function () { return src; }, refresh: refresh,
         findApp: function (re) { var a = raw.filter(function (x) { return re.test(x.id) || re.test(x.name || ''); })[0]; return a ? { id: a.id, name: a.name } : null; }, errors: function () { return errs.slice(); }, launchFirst: launchFirst,                                // 'live' | 'cache' | 'none' (favourites shown)
         dockIds: function () { return dockIds.slice(); },
-        running: running, kill: kill, recent: recent,
+        running: running, kill: kill, recent: recent, tryLaunch: tryLaunch, launchedAt: function (id) { return launchTimes()[id] || 0; },
+        note: function (kind, id, msg) { note(kind, id, { name: 'Note', message: msg }); },
         layout: layout, setDock: setDock, hasSavedDock: function () { return !!savedDock(); }, maxApps: MAX_APPS
     };
 })();

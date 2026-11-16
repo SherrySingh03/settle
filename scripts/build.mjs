@@ -68,6 +68,17 @@ if (!fonttest) {
   }
 }
 
+// ---- minify the shipped CSS: comments and whitespace only (no rule is rewritten) ----
+let rawCss = 0, minCss = 0;
+for (const [name, buf] of files) {
+  if (!name.endsWith('.css')) continue;
+  const src = buf.toString('utf8');
+  rawCss += buf.length;
+  const min = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').replace(/\s*([{};,>])\s*/g, '$1').replace(/;}/g, '}').trim();
+  files.set(name, Buffer.from(min));
+  minCss += Buffer.byteLength(min);
+}
+
 // ---- minimal zip ----
 const T = new Uint32Array(256).map((_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
 const crc32 = (b) => { let c = 0xffffffff; for (const x of b) c = T[(c ^ x) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
@@ -101,7 +112,7 @@ const out = join(dist, fonttest ? 'settle-fonttest.wgt' : 'settle.wgt');
 writeFileSync(out, Buffer.concat([...parts, cd, end]));
 
 const js = names.filter((n) => n.endsWith('.js')).reduce((s, n) => s + files.get(n).length, 0);
-console.log(`${relative(root, out)}  ${(statSync(out).size / 1024).toFixed(0)} KB, ${names.length} files, JS ${(js / 1024).toFixed(1)} KB${rawJs && rawJs !== js ? ' (source ' + (rawJs / 1024).toFixed(1) + ' KB)' : ''}`);
+console.log(`${relative(root, out)}  ${(statSync(out).size / 1024).toFixed(0)} KB, ${names.length} files, JS ${(js / 1024).toFixed(1)} KB${rawJs && rawJs !== js ? ' (source ' + (rawJs / 1024).toFixed(1) + ' KB)' : ''}, CSS ${(minCss / 1024).toFixed(1)} KB (source ${(rawCss / 1024).toFixed(1)} KB)`);
 if (!fonttest && files.get('js/config.local.js').toString().includes('keys')) {
   console.log('NOTE: this package contains the API keys from js/config.local.js. Keep the .wgt private.');
 }

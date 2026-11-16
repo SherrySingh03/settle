@@ -12,7 +12,7 @@
     }
 
     var stage = $('stage'), dock = $('dock'), track = $('rtrack'), bar = $('bar');
-    var a1 = $('a1'), a2 = $('a2'), a3 = $('a3'), a4 = $('a4'), acts = $('acts'), rail = $('rail');
+    var a1 = $('a1'), a2 = $('a2'), a3 = $('a3'), a4 = $('a4'), a5 = $('a5'), acts = $('acts'), rail = $('rail');
     bar.style.position = 'absolute';
 
     var MOON = '<svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true" style="fill:none;stroke:#B4B8BF;stroke-width:3;stroke-linejoin:round;flex:none"><path d="M21 16.5A9 9 0 0 1 9.5 5 9.5 9.5 0 1 0 21 16.5Z"/></svg>';
@@ -25,7 +25,8 @@
     var PLUS = '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 V21 M3 12 H21"/></svg>';
     var CHECK = '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13 L10 18 L20 6"/></svg>';
     var EYE = '<svg width="26" height="24" viewBox="0 0 26 24" aria-hidden="true"><path d="M2 12 C6 5 20 5 24 12 C20 19 6 19 2 12 Z"/><circle cx="13" cy="12" r="3.2"/></svg>';
-    var NOPE = '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 18.4 L18.4 5.6"/></svg>';
+    var INFO = '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11 V17"/><circle cx="12" cy="7.5" r="1.3" fill="currentColor" stroke="none"/></svg>';
+    var NOPE ='<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 18.4 L18.4 5.6"/></svg>';
     var WX_ICONS ={ moon: MOON, sun: SUN, cloud: CLOUD };
     var SHAPES = { circle: [32, 36, 120, 120, '60px'], bar: [16, 72, 152, 56, '4px'], arch: [32, 30, 120, 150, '60px 60px 0 0'] };
 
@@ -133,6 +134,18 @@
         R.el.style.display = R.list.length ? '' : 'none';
         if (R.ri >= R.list.length) R.ri = 0;
         if (k === S.row && S.ri >= R.list.length) S.ri = 0;
+        railEmpty(false);
+    }
+    // Nothing on either row: For tonight stays, with a line saying why instead of a blank space.
+    var recsFailed = false;
+    function railEmpty(failed) {
+        if (failed) recsFailed = true;
+        var none = !rows[0].list.length && !rows[1].list.length, msg = $('rempty');
+        if (!none) { recsFailed = false; msg.classList.remove('on'); return; }
+        rows[0].el.style.display = '';
+        msg.textContent = !(window.Recs && window.Recs.hasKey) ? 'No picks yet: add a TMDB key to config.local.js and the popcorn starts popping'
+            : (recsFailed ? 'The film reel jammed, so no picks right now. Settle tries again when you’re back' : 'Popping tonight’s picks… back in a moment');
+        msg.classList.add('on');
     }
 
     /* ---------- focus painting ---------- */
@@ -194,6 +207,24 @@
         }, 250);
     }
 
+    // A long title steps down through these sizes until it fits on its line; only past the smallest is it cut short.
+    // One measurement per new title (never while a title stays in focus).
+    function fitText(el, sizes) {
+        for (var i = 0; i < sizes.length; i++) {
+            el.style.fontSize = sizes[i] + 'px'; el.style.lineHeight = Math.round(sizes[i] * 1.1) + 'px';
+            if (el.scrollWidth <= el.clientWidth + 1) return;
+        }
+    }
+    var HERO_SIZES = [76, 64, 54, 46], DT_SIZES = [64, 54, 46, 40];
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { heroId = null; if (S.zone === 'rail' || S.zone === 'act') renderHero(); });
+
+    // The movie panel's icon buttons say what they are only while focused, in one caption at the end of the row.
+    function paintCap() {
+        var b = S.zone === 'act' ? ACTS[S.ai] : null, cap = $('a-cap');
+        if (b && b !== a1) { cap.textContent = b.lastChild.textContent; cap.classList.add('on'); }
+        else cap.classList.remove('on');
+    }
+
     function renderHero() {
         var r = recs[S.ri];
         if (!r || (heroId === r.id && heroWl === r.wl)) return;
@@ -203,6 +234,7 @@
             chip.className = r.streaming ? '' : 'out';
             $('h-note').textContent = r.note || '';
             $('h-title').textContent = r.title;
+            fitText($('h-title'), HERO_SIZES);
             $('h-mt').textContent = r.meta || '';
             showImdb(r);
             $('h-desc').textContent = r.desc || '';
@@ -210,10 +242,11 @@
             a2.style.display = r.connect ? 'none' : '';
             a3.style.display = r.connect ? 'none' : '';
             a4.style.display = r.connect ? 'none' : '';
+            a5.style.display = r.connect ? 'none' : '';
         }
         a2.children[0].style.display = r.wl ? 'none' : '';
         a2.children[1].style.display = r.wl ? '' : 'none';
-        a2.lastChild.textContent = r.wl ? 'On watchlist' : 'Watchlist';
+        a2.lastChild.textContent = r.wl ? 'On your watchlist' : 'Add to watchlist';
         a2.classList.toggle('done', !!r.wl);
         heroId = r.id; heroWl = r.wl;
     }
@@ -248,12 +281,15 @@
                 infoFor = it.id; clearTimeout(infoT);
                 infoT = setTimeout(function () { window.AppInfo.ensure(it.label, function () { renderInfo(); }); }, 300);
             }
-        } else if (z === 'rail' || z === 'act' || z === 'rate') {
-            var r = recs[S.ri], rdir = S.ri >= lastRi ? 1 : -1;
+        } else if (z === 'rail' || z === 'act' || z === 'rate' || z === 'dt') {
+            var r = z === 'dt' && DT ? DT.r : recs[S.ri], rdir = S.ri >= lastRi ? 1 : -1, onRail = r === recs[S.ri];
             lastRi = S.ri;
             if (!r || r.connect) return B.rest();
             B.focus('r:' + r.id, {
-                colors: function () { return B.colors('r:' + r.id, function () { var c = pCells[S.ri]; return { el: c && c.querySelector('img'), bg: r.bg }; }); },
+                // The picture waits until focus has really rested on a title, so moving along the rail asks for nothing
+                // and decodes nothing; the popcorn shows once the pause looks deliberate.
+                delay: z === 'dt' ? 600 : 2400, loaderAt: 700, loader: true,
+                colors: function () { return B.colors('r:' + r.id, function () { var c = onRail && pCells[S.ri]; return { el: c && c.querySelector('img'), bg: r.bg }; }); },
                 image: function (cb) { cb(r.bd || null); },
                 ahead: function () { var n = recs[S.ri + rdir]; return [n && n.bd]; }
             });
@@ -266,11 +302,11 @@
         setOn('d', (z === 'dock' || z === 'move') ? dCells[S.di] : null);
         setMoving(z === 'move' ? dCells[S.di] : null);
         setOn('p', z === 'rail' ? pCells[S.ri] : null);
-        setOn('a', z === 'act' ? [a1, a2, a3, a4][S.ai] : null);
-        var mode = (z === 'apps' || z === 'sheet' || z === 'sw') ? 'apps' : z === 'full' ? 'full' : (z === 'rail' || z === 'act' || z === 'rate' ? 'rail' : (z === null ? 'rest' : 'dock'));
+        setOn('a', z === 'act' ? ACTS[S.ai] : null);
+        var mode = (z === 'apps' || z === 'sheet' || z === 'sw') ? 'apps' : z === 'full' ? 'full' : (z === 'rail' || z === 'act' || z === 'rate' || z === 'dt' ? 'rail' : (z === null ? 'rest' : 'dock'));
         stage.classList.toggle('z-dock', z === 'dock' && S.di < dCells.length - 1);     // the full-screen hint, except under the home button
         setOn('hm', z === 'home' ? $('homebtn') : null);
-        stage.classList.toggle('row2', S.row === 1 && (z === 'rail' || z === 'act' || z === 'rate'));
+        stage.classList.toggle('row2', S.row === 1 && (z === 'rail' || z === 'act' || z === 'rate' || z === 'dt'));
         stage.classList.remove('m-rest', 'm-dock', 'm-rail', 'm-full', 'm-apps');
         stage.classList.add('m-' + mode);
         if (mode === 'rest' && lastMode !== 'rest') (window.onRest || []).forEach(function (fn) { try { fn(); } catch (e) { /* silent */ } });
@@ -279,6 +315,8 @@
         else if (z === 'rail' && pCells[S.ri]) barTo(pCells[S.ri], true);
         else if (z !== 'apps' && z !== 'sheet') bar.style.opacity = 0;      // (the switcher has no bar either: its focus is the outline)
         if (z === 'rail' || z === 'act') { scrollRail(); renderHero(); }
+        if (z === 'act' && window.DeepLinks) window.DeepLinks.prefetch(recs[S.ri]);    // ready by the time Open is pressed
+        paintCap();
         syncBackdrop(z);
         renderInfo();
     }
@@ -325,26 +363,187 @@
         var n = recs.length;
         if (d === 'L') { if (S.ri > 0) S.ri--; else bump(pCells[S.ri], -1, 0); }
         else if (d === 'R') { if (S.ri < n - 1) S.ri++; else bump(pCells[S.ri], 1, 0); }
-        else if (d === 'U') { if (S.row === 1 && rows[0].list.length) useRow(0); else { S.zone = 'act'; S.ai = 0; } }
+        else if (d === 'U') { S.zone = 'act'; S.ai = 0; }                 // either row: up to this title's buttons
         else if (d === 'D') { if (S.row === 0 && rows[1].list.length) useRow(1); else bump(pCells[S.ri], 0, 1); }
         else if (d === 'B') { S.zone = 'dock'; }
-        else if (d === 'OK') { openItem(); return; }
+        else if (d === 'OK') { if (recs[S.ri].connect) openTrakt(); else openDetails(recs[S.ri], 'rail'); return; }   // a poster opens its details
         paint();
     }
 
-    function openItem() {
-        var r = recs[S.ri];
-        if (r.connect) openTrakt(); else P.launchProvider(r.provider);
+    function openItem(r) {
+        r = r || recs[S.ri];
+        if (r.connect) return openTrakt();
+        if (r.streaming === false || !(P.isInstalled((C.providerApps || {})[r.provider] || r.provider) || P.isInstalled(r.provider))) {
+            toast(r.streaming === false ? r.title + ' isn’t streaming here yet. Watchlist it and check back' : 'You don’t have ' + r.provider + ' on this TV');
+            return;
+        }
+        launchTitle(r);                                               // straight to the title where the app allows it
     }
+    var launchTitle = function (r) { P.launchProvider(r.provider); };    // replaced below, once launches are wrapped
 
+    // The movie panel's buttons, left to right.
+    var ACTS = [a1, a5, a2, a3, a4];
     function actKey(d) {
-        var single = recs[S.ri] && recs[S.ri].connect;                 // the connect card has no watchlist button
+        var single = recs[S.ri] && recs[S.ri].connect;                 // the connect card has only its one button
         if (d === 'L') { if (S.ai) S.ai--; else bump(acts, -1, 0); }
-        else if (d === 'R') { if (S.ai < (single ? 0 : 3)) S.ai++; else bump(acts, 1, 0); }
+        else if (d === 'R') { if (S.ai < (single ? 0 : ACTS.length - 1)) S.ai++; else bump(acts, 1, 0); }
         else if (d === 'D') { S.zone = 'rail'; }
+        else if (d === 'U' && S.row === 1 && rows[0].list.length) { useRow(0); S.zone = 'rail'; }   // from a Watchlist title: up to For tonight
         else if (d === 'U' || d === 'B') { S.zone = 'dock'; }
-        else if (d === 'OK') { if (S.ai === 3) { notInterested(); return; } if (S.ai === 2) { openRate(); return; } if (S.ai) toggleWatchlist(); else { openItem(); return; } }
+        else if (d === 'OK') {
+            var b = ACTS[S.ai];
+            if (b === a1) { openItem(); return; }
+            if (b === a5) { openDetails(recs[S.ri], 'act'); return; }
+            if (b === a3) { openRate(); return; }
+            if (b === a4) { notInterested(); return; }
+            toggleWatchlist();
+        }
         paint();
+    }
+
+    /* Details: a popup with everything TMDB knows about the title. What the rail already has shows at once; the
+       director, cast, where to stream or rent, language and release date arrive with one TMDB call. */
+    var DT = null;
+    function fact(label, value, mine) {
+        var f = document.createDocumentFragment(), v = h('div', 'fv');
+        f.appendChild(h('div', 'fl', label));
+        if (mine) v.innerHTML = value; else v.textContent = value;
+        f.appendChild(v);
+        return f;
+    }
+    function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+    function provList(list) {                                        // the services you have are highlighted
+        return list.map(function (p) { return p.onTv ? '<span class="mine">' + esc(p.name) + '</span>' : esc(p.name); }).join(', ');
+    }
+    function dtButtons() {
+        var r = DT.r;
+        $('dt-open').lastChild.textContent = r.loading ? 'Finding where to watch…' : (r.streaming === false ? 'Not streaming yet' : 'Open in ' + (r.provider || 'app'));
+        $('dt-wl').children[0].style.display = r.wl ? 'none' : '';
+        $('dt-wl').children[1].style.display = r.wl ? '' : 'none';
+        $('dt-wl').lastChild.textContent = r.wl ? 'On watchlist' : 'Watchlist';
+        $('dt-wl').classList.toggle('done', !!r.wl);
+        $('dt-tr').style.display = DT.trailer ? '' : 'none';
+        var bs = dtBtns();
+        if (DT.b >= bs.length) DT.b = bs.length - 1;
+        setOn('dt', DT.f === 'b' ? bs[DT.b] : null);
+        setOn('lk', DT.f === 'l' ? DT.cells[DT.li] : null);
+        var pick = DT.f === 'l' && DT.like[DT.li];
+        $('dt-ll').textContent = pick ? 'More like this · ' + pick.title : 'More like this';
+        $('dt-hint').textContent = DT.f === 'l' ? 'OK: see this one · ▲ buttons · Back' + (DT.stack.length ? ': previous film' : '')
+            : (DT.cells.length ? '▼ More like this · ' : '') + 'OK · Back' + (DT.stack.length ? ': previous film' : ' to close');
+    }
+    function dtBtns() { return DT.trailer ? [$('dt-open'), $('dt-tr'), $('dt-wl')] : [$('dt-open'), $('dt-wl')]; }
+    function playTrailer() {
+        if (!window.YouTubeCast) return;
+        window.YouTubeCast.play(DT.trailer, DT.r.title).catch(function (e) { toast('No trailer tonight: ' + ((e && e.message) || e)); });
+    }
+    // The same film object wherever it already is (a rail row), so the watchlist state is shared.
+    function known(tmdb) {
+        var all = rows[0].list.concat(rows[1].list);
+        for (var i = 0; i < all.length; i++) if (all[i].tmdb === tmdb) return all[i];
+        return null;
+    }
+    // from: the zone Back returns to ('rail' when a poster was opened, 'act' from the Details button).
+    function openDetails(r, from) {
+        if (!r || r.connect) return;
+        DT = { r: r, b: 0, f: 'b', li: 0, like: [], cells: [], from: from || 'act', stack: [] };
+        S.zone = 'dt'; armIdle(); stage.classList.add('dt-open');
+        $('dt').classList.add('open');
+        showDetails(r);
+    }
+    // A "More like this" pick: shown at once from what the row knows, completed by one TMDB call.
+    function openLike(p) {
+        var r = known(p.tmdb);
+        DT.stack.push(DT.r);
+        if (!r) {
+            r = { id: 'tm' + p.tmdb, tmdb: p.tmdb, title: p.title, art: p.art, bg: '#16181C', loading: true };
+            if (window.Recs && window.Recs.item) window.Recs.item(p.tmdb).then(function (x) {
+                r.loading = false;
+                if (x) Object.keys(x).forEach(function (k) { if (k !== 'wl') r[k] = x[k]; });
+                if (!x) { r.streaming = false; r.provider = 'Not streaming'; }
+                if (DT && DT.r === r) { dtButtons(); paint(); }
+            });
+        }
+        showDetails(r);
+    }
+    function showDetails(r) {
+        DT.r = r; DT.b = 0; DT.f = 'b'; DT.li = 0; DT.like = []; DT.trailer = '';
+        if (window.DeepLinks) window.DeepLinks.prefetch(r);
+        var poster = $('dt-poster');
+        poster.textContent = ''; poster.style.background = r.bg || '#2E323A';
+        if (r.art) { var im = new Image(); im.alt = ''; im.src = r.art.replace('/w185/', '/w342/'); im.onerror = function () { im.onerror = null; im.src = r.art; }; poster.appendChild(im); }
+        $('dt-title').textContent = r.title;
+        fitText($('dt-title'), DT_SIZES);
+        $('dt-tag').textContent = '';
+        $('dt-mt').textContent = r.meta || '';
+        $('dt-imdb').classList.remove('on');
+        $('dt-desc').textContent = r.desc || '';
+        var facts = $('dt-facts');
+        facts.textContent = '';
+        if (r.note) facts.appendChild(fact('Where', r.note.replace(/ · .*/, '')));
+        likeRow([]);
+        dtButtons();
+        paint();
+        if (window.Recs && window.Recs.imdb) window.Recs.imdb(r, function (v) { if (DT && DT.r === r) { $('dt-imdb').lastChild.textContent = v; $('dt-imdb').classList.add('on'); } });
+        if (window.Recs && window.Recs.details) window.Recs.details(r).then(function (x) {
+            if (!x || !DT || DT.r !== r) return;
+            likeRow(x.like || []);
+            DT.trailer = window.YouTubeCast && P.providerApp('YouTube') ? x.trailer || '' : '';   // only offered when YouTube is on the TV
+            dtButtons();
+            $('dt-tag').textContent = x.tagline;
+            if (x.overview) $('dt-desc').textContent = x.overview;
+            if (x.genres.length) $('dt-mt').textContent = [(x.released || '').slice(0, 4), x.genres.slice(0, 3).join(', '), x.runtime].filter(Boolean).join(' · ');
+            facts.textContent = '';
+            if (x.directors.length) facts.appendChild(fact(x.directors.length > 1 ? 'Directors' : 'Director', x.directors.join(', ')));
+            if (x.cast.length) facts.appendChild(fact('Starring', x.cast.join(', ')));
+            facts.appendChild(fact('Stream on', x.stream.length ? provList(x.stream) : 'Not streaming in your region', true));
+            if (x.rent.length) facts.appendChild(fact('Rent or buy', provList(x.rent), true));
+            var rel = x.released ? new Date(x.released + 'T00:00:00').toLocaleDateString(C.locale, { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+            if (rel || x.language) facts.appendChild(fact('Released', [rel, x.language].filter(Boolean).join(' · ')));
+        });
+    }
+    // Up to 8 small posters (w185, already the rail's size). Empty: the row and its label are hidden.
+    function likeRow(list) {
+        var row = $('dt-lrow');
+        row.textContent = ''; DT.like = list; DT.cells = [];
+        list.forEach(function (p) {
+            var c = h('div', 'cell lk'), t = h('div', 'tile'), im = new Image();
+            im.alt = ''; im.src = p.art;
+            t.appendChild(im); c.appendChild(t); row.appendChild(c); DT.cells.push(c);
+        });
+        $('dt-like').classList.toggle('has', list.length > 0);
+    }
+    function closeDetails() {
+        $('dt').classList.remove('open'); stage.classList.remove('dt-open');
+        setOn('dt', null); setOn('lk', null);
+        var from = DT ? DT.from : 'act';
+        $('dt-lrow').textContent = '';
+        DT = null;
+        S.zone = from; armIdle(); paint();
+    }
+    function dtKey(d) {
+        if (d === 'B') {                                              // back to the film you came from, then out
+            if (DT.stack.length) { showDetails(DT.stack.pop()); return; }
+            return closeDetails();
+        }
+        if (DT.f === 'l') {
+            if (d === 'L') { if (DT.li > 0) DT.li--; else bump(DT.cells[0], -1, 0); }
+            else if (d === 'R') { if (DT.li < DT.cells.length - 1) DT.li++; else bump(DT.cells[DT.li], 1, 0); }
+            else if (d === 'U') DT.f = 'b';
+            else if (d === 'OK') { openLike(DT.like[DT.li]); return; }
+            dtButtons(); return;
+        }
+        var bs = dtBtns();
+        if (d === 'L') { if (DT.b > 0) DT.b--; else bump(bs[0], -1, 0); dtButtons(); return; }
+        if (d === 'R') { if (DT.b < bs.length - 1) DT.b++; else bump(bs[DT.b], 1, 0); dtButtons(); return; }
+        if (d === 'D' && DT.cells.length) { DT.f = 'l'; dtButtons(); return; }
+        if (d === 'OK') {
+            var b = bs[DT.b];
+            if (b.id === 'dt-tr') { playTrailer(); return; }
+            if (DT.r.loading) return;
+            if (b.id === 'dt-open') { openItem(DT.r); return; }
+            toggleWatchlist(DT.r); dtButtons();
+        }
     }
 
     /* "Watched": a small dialog to rate the title, then log it on Trakt. Optimistic: the title leaves the rail at once and
@@ -477,8 +676,9 @@
         }
         renderHero();
     }
-    function toggleWatchlist() {
-        var r = recs[S.ri], i = S.ri, on = !r.wl;
+    function toggleWatchlist(r) {
+        r = r || recs[S.ri];
+        var i = S.ri, on = !r.wl;
         setWl(r, i, on);
         if (window.Trakt) window.Trakt.setWatchlist(r, on).catch(function () { setWl(r, i, !on); });   // reconcile on failure
     }
@@ -684,11 +884,11 @@
        goes home. Free memory (from Vetro, when it is up) sits in the corner and is read again after every close. */
     var swItems = [], swCells = [], swSel = 0, swBusy = false, swOpening = false, swMemT = 0, swMemLast = 0;
     function openSwitcher() {
-        if (swOpening || S.zone === 'sw' || ['trk', 'diag', 'sheet', 'move', 'src', 'cc', 'rate'].indexOf(S.zone) >= 0) return;
+        if (swOpening || S.zone === 'sw' || ['trk', 'diag', 'sheet', 'move', 'src', 'cc', 'rate', 'dt'].indexOf(S.zone) >= 0) return;
         swOpening = true;
         P.running().then(function (list) {
             swOpening = false;
-            if (!list.length) { toast('No open apps'); return; }
+            if (!list.length) { toast('Nothing open. Everything’s tucked in'); return; }
             if (S.zone === 'apps') teardownApps();
             swItems = list; swSel = 0; swBusy = false;
             buildSwitcher();
@@ -705,16 +905,27 @@
         swItems.forEach(function (x) {
             var c = h('div', 'cell swcell'), t = h('div', 'tile swtile');
             paintTile(t, x.it);
-            c.appendChild(t); c.appendChild(h('div', 'swlbl', x.it.label));
+            c.appendChild(t); c.appendChild(h('div', 'swlbl', x.it.label)); c.appendChild(h('div', 'swsub', ago(P.launchedAt(x.it.id))));
             row.appendChild(c); swCells.push(c);
         });
-        var all = h('div', 'cell swcell swall');
-        all.appendChild(h('div', 'tile swtile', 'Close all'));
+        var all = h('div', 'cell swcell swall'), at = h('div', 'tile swtile');
+        at.innerHTML = '<svg width="56" height="56" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6 L18 18 M18 6 L6 18"/></svg><span>Close all</span>';
+        all.appendChild(at);
         all.appendChild(h('div', 'swlbl'));
+        all.appendChild(h('div', 'swsub', 'Frees up memory'));
         row.appendChild(all); swCells.push(all);
         swCount();
     }
-    function swCount() { swCells[swCells.length - 1].lastChild.textContent = swItems.length === 1 ? '1 app' : swItems.length + ' apps'; }
+    // "Opened 12 min ago" for an app opened from Settle; one started some other way has no time here.
+    function ago(t) {
+        if (!t) return 'Running in the background';
+        var m = Math.round((Date.now() - t) / 60000);
+        if (m < 1) return 'Opened just now';
+        if (m < 60) return 'Opened ' + m + ' min ago';
+        var hr = Math.round(m / 60);
+        return hr < 24 ? 'Opened ' + hr + ' h ago' : 'Opened ' + Math.round(hr / 24) + ' d ago';
+    }
+    function swCount() { swCells[swCells.length - 1].children[1].textContent = swItems.length === 1 ? '1 app' : swItems.length + ' apps'; }
     function swPaint() {
         var c = swCells[swSel];
         setOn('sw', c);
@@ -803,6 +1014,7 @@
     window.addEventListener('focus', function () {
         var back = blurAt && Date.now() - blurAt < 5000;
         blurAt = 0;
+        if (!document.hidden && $('launchfx').classList.contains('on') && !homeTrying) returnFx();   // an overlay app (e.g. Samsung's home) was closed
         if (back && !document.hidden) homePressed('focus'); else homeLog('focus');
     });
     function homePressed(kind) {
@@ -856,8 +1068,14 @@
             if (on && ids.length > 1) shOpts.push({ t: 'Remove from dock', k: 'remove' });
             shOpts.push({ t: 'Hide from All apps', k: 'hide' });
             shOpts.push({ t: 'App info', k: 'info' });
+            if (window.Vetro && window.Vetro.uninstall && P.canUninstall(shIt.id)) shOpts.push({ t: 'Uninstall…', k: 'uninstall' });
             if (P.hiddenCount() > 0) shOpts.push({ t: 'Show hidden apps (' + P.hiddenCount() + ')', k: 'unhide' });
             if (P.hasSavedDock()) shOpts.push({ t: 'Reset the dock to the default apps', k: 'reset' });
+            shOpts.push({ t: 'Cancel', k: 'cancel' });
+        } else if (shMode === 'confirm') {                           // uninstalling cannot be undone: asked once more
+            $('sh-title').textContent = 'Uninstall ' + shIt.label + '?';
+            $('sh-sub').textContent = 'It is deleted from the TV with its data and sign-in. This can’t be undone.';
+            shOpts.push({ t: 'Uninstall ' + shIt.label, k: 'unok' });
             shOpts.push({ t: 'Cancel', k: 'cancel' });
         } else if (shMode === 'info') {
             var inf = P.appInfo(shIt.id) || {};
@@ -911,6 +1129,8 @@
             if (o.k === 'line') return;
             if (o.k === 'open') { P.launch(shIt.id); return closeSheet(); }
             if (o.k === 'info') { shMode = 'info'; shSel = 0; return sheetPaint(); }
+            if (o.k === 'uninstall') { shMode = 'confirm'; shSel = 1; return sheetPaint(); }      // Cancel is focused first
+            if (o.k === 'unok') { var it = shIt; closeSheet(); return uninstallApp(it); }
             if (o.k === 'hide') { P.hideApp(shIt.id); closeSheet(); rebuildApps(); return toast('Hidden from All apps.'); }
             if (o.k === 'unhide') { P.unhideAll(); closeSheet(); rebuildApps(); return toast('Hidden apps are back.'); }
             if (o.k === 'reset') return commitDock(null, 'Dock reset to the default apps.');
@@ -920,6 +1140,27 @@
             if (o.k === 'swap') { var was = dockItems[o.i].label; ids[o.i] = shIt.id; return commitDock(ids, 'Replaced ' + was + ' with ' + shIt.label + '.'); }
         }
         sheetPaint();
+    }
+
+    /* Uninstall through Vetro (a web app may not). Afterwards the TV's own app list decides: gone means done, and the app
+       leaves the dock too; still there means the TV refused, and what it said is shown (and kept for Diagnostics). */
+    function uninstallApp(it) {
+        var inf = P.appInfo(it.id) || {};
+        toast('Uninstalling ' + it.label + '…');
+        window.Vetro.uninstall(inf.pkg || it.pkg || it.id, it.id).then(function (res) {
+            return P.refresh().then(function () {
+                if (P.installedIds().indexOf(it.id) < 0) {
+                    var ids = P.dockIds(), k = ids.indexOf(it.id);
+                    if (k >= 0) { ids.splice(k, 1); P.setDock(ids.length ? ids : null); }
+                    applyDock();
+                    if (S.zone === 'apps') rebuildApps();
+                    toast(it.label + ' is uninstalled');
+                } else {
+                    P.note('uninstall', it.id, res.output);
+                    toast('The TV kept ' + it.label + ': ' + (res.output.split(/\r?\n/).filter(Boolean).slice(-2).join(' · ') || 'no answer'));
+                }
+            });
+        }, function (e) { toast('Couldn’t uninstall ' + it.label + ': ' + ((e && e.message) || e)); });
     }
 
     function mockIcons(list) {                                      // browser preview only: stand-in icon paths
@@ -935,13 +1176,42 @@
     }
 
     /* Sources screen */
-    // Samsung's own home screen, from any state: the web API first, then Vetro. A refusal is said on screen with the error.
+    /* Samsung's own home screen. The TV can accept a launch and still show nothing (a home component that is not the
+       home itself), so "accepted" is not enough: each candidate in config.samsungHome is tried until Settle actually
+       loses the screen (hidden, or focus taken by an overlay) within 1.5 s. Then Vetro's app_launcher for the first
+       one. Every miss is noted for Diagnostics; if nothing works the notice lists what was tried. */
+    var homeTrying = false;
     function openSamsungHome() {
-        var ids = C.samsungHome || ['com.samsung.tv.coba.newhome'];
-        P.launchFirst(ids).catch(function (e) {
-            if (!window.Vetro || !window.Vetro.launchApp) throw e;
-            return window.Vetro.launchApp(ids[0]);
-        }).catch(function (e) { toast('Samsung Home did not open: ' + ((e && e.name) || 'Error') + ': ' + ((e && e.message) || e)); });
+        if (homeTrying) return;
+        var ids = (C.samsungHome || []).slice(), tried = [];
+        if (!ids.length) { toast('No Samsung Home app is configured'); return; }
+        homeTrying = true;
+        function gone() { return document.hidden || (document.hasFocus && !document.hasFocus()); }
+        function done(ok) {
+            homeTrying = false;
+            if (ok) return;
+            returnFx();
+            toast('Samsung Home did not open. Tried: ' + tried.join(', '));
+        }
+        function check(id, next) {
+            setTimeout(function () {
+                if (gone()) return done(true);
+                P.note('home', id, 'accepted, but nothing took the screen');
+                next();
+            }, 1500);
+        }
+        function attempt(k) {
+            clearTimeout(fxUndo);                                     // the launch overlay stays while candidates are tried
+            if (k >= ids.length) {
+                if (!window.Vetro || !window.Vetro.launchApp) return done(false);
+                tried.push('Vetro ' + ids[0]);
+                return window.Vetro.launchApp(ids[0]).then(function () { check('vetro ' + ids[0], function () { done(false); }); }, function () { done(false); });
+            }
+            var id = ids[k];
+            tried.push(id.replace('com.samsung.tv.', ''));
+            P.tryLaunch(id).then(function () { check(id, function () { attempt(k + 1); }); }, function () { attempt(k + 1); });
+        }
+        launchFx(function () { attempt(0); });
     }
 
     function openSources() {
@@ -988,6 +1258,7 @@
         if (S.zone === 'sw') closeSwitcher(false);
         if (S.zone === 'diag') $('diag').classList.remove('open');
         if (S.zone === 'rate') { $('rate').classList.remove('open'); RT = null; }
+        if (S.zone === 'dt') { stage.classList.remove('dt-open'); $('dt').classList.remove('open'); setOn('dt', null); DT = null; }
         if (S.zone === 'trk') { window.Trakt.cancel(); closeTrakt(); }   // app was hidden: the code flow was cancelled
         if (S.zone === 'src') { $('sources').classList.remove('open'); setOn('s', null); }
         S.zone = null;
@@ -1046,7 +1317,7 @@
     var pp = { down: false, held: false, last: 0, timer: 0 };
     function ccToggle() {
         if (S.zone === 'cc') return closeCC();
-        if (['trk', 'diag', 'sheet', 'move', 'src', 'rate', 'sw'].indexOf(S.zone) < 0) openCC();
+        if (['trk', 'diag', 'sheet', 'move', 'src', 'rate', 'sw', 'dt'].indexOf(S.zone) < 0) openCC();
     }
     function diagToggle() {
         if (S.zone === 'diag') { $('diag').classList.remove('open'); S.zone = 'dock'; armIdle(); paint(); return; }
@@ -1065,7 +1336,6 @@
         if (pp.last && now - pp.last < 450) { pp.last = 0; ccToggle(); } else pp.last = now;
     });
 
-    var expN = 0;
     document.addEventListener('keydown', function (e) {
         window.__lastKey = e.keyCode;                                  // shown on the diagnostics screen (to check a remapped button)
         var d = KEYS[e.keyCode];
@@ -1083,14 +1353,12 @@
         if (S.zone === 'diag') {                                        // Back closes; nothing else moves
             if (d === 'B' || d === 'Y') { $('diag').classList.remove('open'); S.zone = 'dock'; armIdle(); paint(); }
             else if (d === 'OK') window.Diag.capture($('d-body'));
-            else if (/^N[0-3]$/.test(d)) window.Diag.experiment($('d-body'), +d.charAt(1));
-            else if (d === 'R') { expN = expN % 3 + 1; window.Diag.experiment($('d-body'), expN); }        // Right: try the next AI setting (1, 2, 3)
-            else if (d === 'L') { expN = 0; window.Diag.experiment($('d-body'), 0); }                      // Left: put them all back
             return;
         }
         if (S.zone === 'rate') { armIdle(); clearTimeout(idleT); rateKey(d); return; }
+        if (S.zone === 'dt' && d !== 'Y' && d !== 'C' && d !== 'G') { armIdle(); dtKey(d); return; }
         if (d === 'Y') {
-            if (S.zone === 'trk' || S.zone === 'src' || S.zone === 'apps' || S.zone === 'sheet' || S.zone === 'move' || S.zone === 'sw') return;
+            if (S.zone === 'trk' || S.zone === 'src' || S.zone === 'apps' || S.zone === 'sheet' || S.zone === 'move' || S.zone === 'sw' || S.zone === 'dt') return;
             clearTimeout(idleT);
             S.zone = 'diag'; bar.style.opacity = 0;
             window.Diag.show($('d-body'), dockItems);
@@ -1099,7 +1367,7 @@
         }
         if (d === 'C') {                                                                      // the Control Center key opens and closes the panel
             if (S.zone === 'cc') return closeCC();
-            if (['trk', 'diag', 'sheet', 'move', 'src', 'sw'].indexOf(S.zone) < 0) openCC();
+            if (['trk', 'diag', 'sheet', 'move', 'src', 'sw', 'dt'].indexOf(S.zone) < 0) openCC();
             return;
         }
         if (S.zone === 'cc') { armIdle(); cc.handleKey(d); return; }
@@ -1202,6 +1470,19 @@
             launchFx(function () { rawLaunch(id, function (e) { returnFx(); if (onFail) onFail(e); }); });
         };
         P.launchProvider = function (name) { launchFx(function () { rawProvider(name); }); };
+        // A rail title: its deep link when JustWatch has one for the app (asked at most 2 s, usually already fetched
+        // when the buttons or the details were shown), else the app's home screen as before.
+        launchTitle = function (r) {
+            launchFx(function () {
+                clearTimeout(fxUndo);
+                var find = window.DeepLinks ? window.DeepLinks.find(r, 2000) : Promise.resolve(null);
+                find.then(function (dl) {
+                    fxUndo = setTimeout(function () { if (!document.hidden) returnFx(); }, 2500);
+                    if (!dl) return rawProvider(r.provider);
+                    P.launchDeep(dl.app, dl.data).catch(function () { rawProvider(r.provider); });
+                });
+            });
+        };
         P.launchFirst = function (ids) {
             return new Promise(function (ok, no) { launchFx(function () { rawFirst(ids).then(ok, function (e) { returnFx(); no(e); }); }); });
         };
@@ -1209,7 +1490,13 @@
 
     document.addEventListener('visibilitychange', function () {
         clearTimeout(clockT); clearTimeout(idleT); clearTimeout(holdT); setPressing(null);
-        if (document.hidden) { blurAt = 0; homeLog('hidden'); return; }
+        if (document.hidden) {
+            blurAt = 0; homeLog('hidden');
+            // Another app has the screen: go to rest now rather than on return, so the backdrop picture, the All apps grid
+            // and any open panel are let go while that app runs (Settle keeps running in the background for trailers).
+            if (S.zone !== 'trk' && !(S.zone === 'sw' && Date.now() - swOpenedAt < 1500)) toRest();   // (not the tail of the double Home)
+            return;
+        }
         returnFx();
         tick();
         homePressed('visible');
@@ -1247,8 +1534,12 @@
 
     a1.innerHTML = PLAY + '<span></span>';
     a2.innerHTML = PLUS + CHECK + '<span></span>';
-    a3.innerHTML = EYE + '<span>Watched</span>';
+    a3.innerHTML = EYE + '<span>Mark as watched</span>';
     a4.innerHTML = NOPE + '<span>Not interested</span>';
+    a5.innerHTML = INFO + '<span>Details, cast and more like this</span>';
+    $('dt-open').innerHTML = PLAY + '<span></span>';
+    $('dt-wl').innerHTML = PLUS + CHECK + '<span></span>';
+    $('dt-tr').innerHTML = '<svg width="26" height="24" viewBox="0 0 26 24" aria-hidden="true"><rect x="2" y="4" width="22" height="16" rx="4"/><path d="M11 9 L16 12 L11 15 Z" fill="currentColor"/></svg><span>Trailer</span>';
     $('wx-rest').innerHTML = '<span></span><span></span>';
     $('wx-full').innerHTML = '<span style="display:flex"></span><span></span>';
     $('act-line').innerHTML = '<span id="al-d"></span><b class="dot"></b><span id="al-i" style="display:flex"></span><span id="al-w"></span>';
@@ -1273,5 +1564,5 @@
     });
     armIdle();
 
-    window.Settle = { state: S, recs: function () { return recs; }, rows: function () { return [rows[0].list, rows[1].list]; }, setWeather: setWeather, setRecs: setRecs, toast: toast };
+    window.Settle = { openSwitcher: function () { closeCC(); openSwitcher(); }, recsFailed: function () { railEmpty(true); }, state: S, recs: function () { return recs; }, rows: function () { return [rows[0].list, rows[1].list]; }, setWeather: setWeather, setRecs: setRecs, toast: toast };
 })();

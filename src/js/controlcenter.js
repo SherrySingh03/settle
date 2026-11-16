@@ -32,7 +32,7 @@
         input: ['M4 6h16v7l-3 5H7l-3-5z'],
         ai: ['M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z', 'M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z'],
         screensaver: ['M4 18l5-7 4 4 3-3 4 6', 'M15.5 7.5a1.5 1.5 0 1 0 3 0 1.5 1.5 0 1 0-3 0', 'M3.5 4.5h17v15h-17z'],
-        wifi: ['M3 9.5a13 13 0 0 1 18 0', 'M6 13a8.5 8.5 0 0 1 12 0', 'M9 16.5a4 4 0 0 1 6 0', 'M12 20h.01'],
+        recent: ['M4 7.5h11v11H4z', 'M8 4.5h12v11'],
         bluetooth: ['M7 7.5l10 9-5 4.5V3l5 4.5-10 9'],
         wallpaper: ['M3.5 5.5h17v13h-17z', 'M3.5 15.5l5-5 4 4 2.5-2.5 5 5', 'M15.5 9.2h.01'],
         recs: ['M19.5 12a7.5 7.5 0 1 1-2.2-5.3', 'M19.5 4.5v4.2h-4.2'],
@@ -60,11 +60,11 @@
         sleep: { R: 'picture', D: 'output' },
         picture: { L: 'sleep', D: 'sound' },
         sound: { L: 'sleep', U: 'picture', D: 'input' },
-        output: { U: 'sleep', R: 'input', D: 'wifi' },
+        output: { U: 'sleep', R: 'input', D: 'recent' },
         input: { L: 'output', U: 'sound', D: 'bluetooth' },
-        wifi: { U: 'output', R: 'bluetooth', D: 'brightness' },
-        bluetooth: { U: 'input', L: 'wifi', D: 'screensaver' },
-        brightness: { U: 'wifi', D: 'wallpaper', R: 'screensaver' },
+        recent: { U: 'output', R: 'bluetooth', D: 'brightness' },
+        bluetooth: { U: 'input', L: 'recent', D: 'screensaver' },
+        brightness: { U: 'recent', D: 'wallpaper', R: 'screensaver' },
         screensaver: { U: 'bluetooth', L: 'brightness', D: 'recs' },
         wallpaper: { U: 'brightness', R: 'recs' },
         recs: { U: 'screensaver', L: 'wallpaper' }
@@ -74,7 +74,7 @@
         hooks = hooks || {};
         var controls = adapter.controls(), byId = {}, tiles = {}, st = {}, notes = {};
         controls.forEach(function (c) { byId[c.id] = c; });
-        var isOpen = false, view = 'grid', sel = controls[0].id, lastLow = 'wifi';
+        var isOpen = false, view = 'grid', sel = controls[0].id, lastLow = 'recent';
         var pg = null, list = null, armed = null, armT = 0, noteT = 0, slide = null, slideT = 0, closeT = 0, busy = false;
         var panel, body;
 
@@ -305,7 +305,7 @@
             var to = NAV[sel] && NAV[sel][k];
             if (sel === 'brightness' && k === 'U') to = lastLow;
             if (to && byId[to]) {
-                if (['output', 'input', 'wifi', 'bluetooth'].indexOf(sel) >= 0) lastLow = sel;
+                if (['output', 'input', 'recent', 'bluetooth'].indexOf(sel) >= 0) lastLow = sel;
                 if (armed) disarm();
                 var prev = sel; sel = to;
                 paintTile(prev); paintTile(sel);

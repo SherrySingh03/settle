@@ -18,6 +18,6 @@
     <tizen:metadata key="http://samsung.com/tv/metadata/prelaunch.support" value="true"/>
     <tizen:profile name="tv-samsung"/>
     <tizen:setting screen-orientation="landscape" context-menu="disable"
-                   background-support="disable" encryption="disable"
+                   background-support="enable" encryption="disable"
                    install-location="auto" hwkey-event="enable"/>
 </widget>
