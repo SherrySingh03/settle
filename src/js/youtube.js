@@ -36,8 +36,12 @@
         if (!id) { id = 'settle' + Math.random().toString(36).slice(2, 12) + Date.now().toString(36); try { localStorage.setItem(IK, id); } catch (e) { /* silent */ } }
         return id;
     }
+    // The id set in config.local.js wins: the TV's DIAL service refuses requests made on the TV itself (401 from
+    // 127.0.0.1, seen on the QN70F), so on such a TV the id can only be read once from a computer on the network.
     function savedScreen() {
-        try { return localStorage.getItem(SK) || (C.youtube && C.youtube.screenId) || ''; } catch (e) { return (C.youtube && C.youtube.screenId) || ''; }
+        var cfg = (C.youtube && C.youtube.screenId) || '';
+        if (cfg) return cfg;
+        try { return localStorage.getItem(SK) || ''; } catch (e) { return ''; }
     }
     function saveScreen(id) { try { if (id) localStorage.setItem(SK, id); else localStorage.removeItem(SK); } catch (e) { /* silent */ } }
 
@@ -60,26 +64,34 @@
             return s.loungeToken;
         });
     }
+    // Joins the screen's session the way pyytlounge's connect() does. The reply is "<length>\n<json>" chunks of
+    // [eventId, [type, ...args]]: "c" carries the SID, "S" the gsessionid, and the last event id becomes AID.
     function bind(tok) {
-        return post('bc/bind', { RID: 0, VER: 8, CVER: 1 }, {
-            device: 'REMOTE_CONTROL', id: remoteId(), name: 'Settle', 'mdx-version': 3, pairing_type: 'cast',
-            app: 'android-phone-13.14.55', loungeIdToken: tok
+        return post('bc/bind', { RID: 1, VER: 8, CVER: 1, auth_failure_option: 'send_error' }, {
+            app: 'web', 'mdx-version': 3, name: 'Settle', id: remoteId(), device: 'REMOTE_CONTROL', capabilities: 'que,dsdtr,atp,vsp',
+            magnaKey: 'cloudPairedDevice', ui: 'false', theme: 'cl', loungeIdToken: tok,
+            deviceContext: 'user_agent=dunno&window_width_points=&window_height_points=&os_name=android&ms='
         }, tok).then(function (t) {
-            var sid = /"c","(.*?)","/.exec(t), gs = /"S","(.*?)"]/.exec(t);
+            var sid = /"c","(.*?)","/.exec(t), gs = /"S","(.*?)"]/.exec(t), ids = t.match(/\[(\d+),\["/g) || [];
             if (!sid || !gs) throw new Error('bind: no session');
-            return { sid: sid[1], gs: gs[1], ready: t.indexOf('LOUNGE_SCREEN') >= 0 };
+            var aid = ids.length ? +/\d+/.exec(ids[ids.length - 1])[0] : 0;
+            return { sid: sid[1], gs: gs[1], aid: aid, screen: t.indexOf('LOUNGE_SCREEN') >= 0 };
         });
     }
-    // Bind once a second until the TV's YouTube is in the session (up to 25 s), then cue the video.
-    function cue(tok, video, ms) {
-        var until = Date.now() + (ms || 25000);
+    // Cues the video. The TV's YouTube does not always list itself in the session it joined, so Settle does not wait
+    // for it (a wait that never ended was why the trailer only opened YouTube): it gives a just-launched YouTube up to
+    // 4 s to show up, then sends the command anyway, as pyytlounge does once it has a session.
+    function cue(tok, video) {
+        var start = Date.now();
         function again() {
             return bind(tok).then(function (s) {
-                if (!s.ready) { if (Date.now() > until) throw new Error('YouTube never joined the session'); return wait(1000).then(again); }
-                return post('bc/bind', { SID: s.sid, gsessionid: s.gs, RID: 1, VER: 8, CVER: 1 }, {
-                    req0__sc: 'setPlaylist', req0__videoId: video, req0__currentTime: 0, req0__currentIndex: -1,
-                    req0__audioOnly: 'false', req0__listId: '', count: 1
-                }, tok);
+                if (!s.screen && Date.now() - start < 4000) return wait(1000).then(again);
+                // The command's own name is req0__sc (its key starts with "_"); every parameter is req0_<name>, ONE
+                // underscore (pyytlounge _command). ofs counts commands; AID is the last event id seen.
+                return post('bc/bind', {
+                    name: 'Settle', loungeIdToken: tok, SID: s.sid, AID: s.aid, gsessionid: s.gs, device: 'REMOTE_CONTROL',
+                    app: 'youtube-desktop', VER: 8, v: 2, RID: 2
+                }, { count: 1, ofs: 1, req0__sc: 'setPlaylist', req0_videoId: video }, tok);
             });
         }
         return again();
@@ -96,16 +108,7 @@
         var tok = (screen ? token(screen).catch(function () { saveScreen(''); return null; }) : Promise.resolve(null)).then(function (t) {
             return t || discover().then(token);                              // no id yet, or a stale one: ask DIAL
         });
-        // A remembered id can belong to another YouTube app (this TV had two): its screen never joins. Then forget it,
-        // read the running app's id from DIAL, and try once more.
-        return tok.then(function (t) {
-            return cue(t, video, screen ? 8000 : 25000).catch(function (e) {   // a remembered id gets 8 s, then DIAL is asked
-                if (!screen) throw e;
-                P.note('trailer', video, 'remembered screen id did not join: asking DIAL again');
-                saveScreen(''); screen = '';
-                return discover().then(token).then(function (t2) { return cue(t2, video); });
-            });
-        }).then(function () {
+        return tok.then(function (t) { return cue(t, video); }).then(function () {
             P.note('trailer', video, 'cued in YouTube');
             busy = false;
             return 'cued';

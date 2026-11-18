@@ -33,6 +33,7 @@
         ai: ['M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z', 'M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z'],
         screensaver: ['M4 18l5-7 4 4 3-3 4 6', 'M15.5 7.5a1.5 1.5 0 1 0 3 0 1.5 1.5 0 1 0-3 0', 'M3.5 4.5h17v15h-17z'],
         recent: ['M4 7.5h11v11H4z', 'M8 4.5h12v11'],
+        perf: ['M13 2.5 4.5 13.5h6.5l-1 8 8.5-11h-6.5z'],
         bluetooth: ['M7 7.5l10 9-5 4.5V3l5 4.5-10 9'],
         wallpaper: ['M3.5 5.5h17v13h-17z', 'M3.5 15.5l5-5 4 4 2.5-2.5 5 5', 'M15.5 9.2h.01'],
         recs: ['M19.5 12a7.5 7.5 0 1 1-2.2-5.3', 'M19.5 4.5v4.2h-4.2'],
@@ -57,10 +58,11 @@
 
     // Which tile each direction leads to. Brightness returns to whichever of Output / Input was last used.
     var NAV = {
-        sleep: { R: 'picture', D: 'output' },
+        sleep: { R: 'picture', D: 'perf' },
+        perf: { U: 'sleep', R: 'sound', D: 'output' },
         picture: { L: 'sleep', D: 'sound' },
-        sound: { L: 'sleep', U: 'picture', D: 'input' },
-        output: { U: 'sleep', R: 'input', D: 'recent' },
+        sound: { L: 'perf', U: 'picture', D: 'input' },
+        output: { U: 'perf', R: 'input', D: 'recent' },
         input: { L: 'output', U: 'sound', D: 'bluetooth' },
         recent: { U: 'output', R: 'bluetooth', D: 'brightness' },
         bluetooth: { U: 'input', L: 'recent', D: 'screensaver' },

@@ -83,23 +83,53 @@
         });
     }
 
-    function fetchToday() {
-        var auth = { headers: { Authorization: 'Client-ID ' + KEY, 'Accept-Version': 'v1' } };
-        var q = 'orientation=landscape&content_filter=high&query=' + encodeURIComponent(W.query || 'nature landscape');
+    /* Variety. /photos/random leans towards a query's most popular photos, so one photo per call with one query kept
+       bringing back the same few. Instead: ask for 30 at once (count=30, the API's maximum), keep them as a queue (most
+       changes then need no API call: demo keys allow 50 an hour), skip any of the last 300 shown, and take each refill
+       from the next query in the list (config wallpaper.query: a list, or one query). */
+    var QK = 'settle.wall.queue.v1', SEEN = 'settle.wall.seen.v1', TK = 'settle.wall.topic.v1';
+    function ls(k, d) { try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } }
+    function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* silent */ } }
+    function queries() {
+        var q = W.query || 'nature landscape';
+        return Array.isArray(q) && q.length ? q : [String(q)];
+    }
+    function refill(auth) {
+        var qs = queries(), t = (+ls(TK, 0) || 0) % qs.length;
+        lsSet(TK, t + 1);
+        var q = 'orientation=landscape&content_filter=high&count=30&query=' + encodeURIComponent(qs[t]);
         return fetch('https://api.unsplash.com/photos/random?' + q, auth)
             .then(function (r) { if (!r.ok) throw new Error('api'); return r.json(); })
-            .then(function (j) {
-                var raw = j.urls.raw, u = raw + (raw.indexOf('?') > -1 ? '&' : '?') + 'w=' + WW + '&h=' + WH + '&fit=crop&q=80&fm=jpg';
-                if (j.links && j.links.download_location) fetch(j.links.download_location, auth).catch(function () {});   // API guideline
-                return fetch(u).then(function (r) { if (!r.ok) throw new Error('img'); return r.blob(); }).then(ingest).then(function (blob) {
+            .then(function (list) {
+                var seen = ls(SEEN, []);
+                return (Array.isArray(list) ? list : [list]).filter(function (j) { return j && j.id && j.urls && seen.indexOf(j.id) < 0; }).map(function (j) {
                     var loc = (j.location && j.location.name) || j.description || j.alt_description || '';
-                    return {
-                        day: today(), w: WW, blob: blob,
-                        caption: loc.length > 56 ? loc.slice(0, 55) + '…' : loc,
-                        credit: j.user && j.user.name ? 'Photo by ' + j.user.name + ' on Unsplash' : 'Unsplash'
-                    };
+                    return { id: j.id, raw: j.urls.raw, dl: (j.links && j.links.download_location) || '', user: (j.user && j.user.name) || '', loc: loc };
                 });
             });
+    }
+    function nextPhoto(auth, tries) {
+        var queue = ls(QK, []), seen = ls(SEEN, []);
+        while (queue.length && seen.indexOf(queue[0].id) >= 0) queue.shift();
+        if (queue.length) { var p = queue.shift(); lsSet(QK, queue); return Promise.resolve(p); }
+        if (tries >= 2) return Promise.reject(new Error('nothing new'));
+        return refill(auth).then(function (fresh) { lsSet(QK, fresh); return nextPhoto(auth, (tries || 0) + 1); });
+    }
+    function fetchToday() {
+        var auth = { headers: { Authorization: 'Client-ID ' + KEY, 'Accept-Version': 'v1' } };
+        return nextPhoto(auth, 0).then(function (j) {
+            var raw = j.raw, u = raw + (raw.indexOf('?') > -1 ? '&' : '?') + 'w=' + WW + '&h=' + WH + '&fit=crop&q=80&fm=jpg';
+            return fetch(u).then(function (r) { if (!r.ok) throw new Error('img'); return r.blob(); }).then(ingest).then(function (blob) {
+                var seen = ls(SEEN, []).filter(function (x) { return x !== j.id; });
+                seen.push(j.id); lsSet(SEEN, seen.slice(-300));
+                if (j.dl) fetch(j.dl, auth).catch(function () {});        // API guideline: counted when the photo is used
+                return {
+                    day: today(), w: WW, blob: blob,
+                    caption: j.loc.length > 56 ? j.loc.slice(0, 55) + '…' : j.loc,
+                    credit: j.user ? 'Photo by ' + j.user + ' on Unsplash' : 'Unsplash'
+                };
+            });
+        });
     }
 
     function atRest() { return !window.Settle || window.Settle.state.zone === null; }

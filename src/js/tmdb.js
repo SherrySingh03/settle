@@ -17,8 +17,8 @@
     var API = 'https://api.themoviedb.org/3', IMG = 'https://image.tmdb.org/t/p/w185';
     var SHORT = { 'Amazon Prime Video': 'Prime Video', 'Amazon Video': 'Prime Video', 'Disney Plus Hotstar': 'JioHotstar', 'Hotstar': 'JioHotstar', 'Sony Liv': 'SonyLIV', 'Sonyliv': 'SonyLIV', 'Apple TV Plus': 'Apple TV', 'Apple TV+': 'Apple TV' };
 
-    function load() { try { return JSON.parse(localStorage.getItem(CK)); } catch (e) { return null; } }
-    function save(v) { try { localStorage.setItem(CK, JSON.stringify(v)); } catch (e) { /* silent */ } }
+    function load(k) { try { return JSON.parse(localStorage.getItem(k || CK)); } catch (e) { return null; } }
+    function save(v, k) { try { localStorage.setItem(k || CK, JSON.stringify(v)); } catch (e) { /* silent */ } }
     function source() { return window.Trakt && window.Trakt.connected() ? 'trakt' : 'pop'; }
     function cached() {
         var c = load();
@@ -71,7 +71,14 @@
 
     // tier: how watchable a title is here, lower first. On an app you have and included in the subscription (0), on an
     // app you have to rent or buy (1), streaming on a service you do not have (2), rent elsewhere (3), nowhere (4).
-    function toItem(d) {
+    function seasons(d) { var n = d.number_of_seasons; return n ? n + (n === 1 ? ' season' : ' seasons') : ''; }
+    function certTv(d) {
+        var r = ((d.content_ratings && d.content_ratings.results) || []).filter(function (x) { return x.iso_3166_1 === REG && x.rating; })[0];
+        return r ? r.rating : '';
+    }
+    // kind 'tv': a show (/tv/{id}); otherwise a film. Same shape either way, so the rail treats them alike.
+    function toItem(d, kind) {
+        var tv = kind === 'tv';
         var wp = (d['watch/providers'] && d['watch/providers'].results && d['watch/providers'].results[REG]) || {};
         var flat = names(wp.flatrate), rent = names((wp.rent || []).concat(wp.buy || []));
         var flatOn = flat.filter(onTv), rentOn = rent.filter(onTv);
@@ -87,13 +94,14 @@
             : (kind === 'rent' ? 'Rent in ' : 'Streaming in ') + country() +
               (others.length ? ' · also on ' + others[0] : (rentOthers.length ? ' · also on ' + rentOthers[0] + ' to rent' : ''));
 
-        var year = (d.release_date || '').slice(0, 4), genre = d.genres && d.genres[0] ? d.genres[0].name : '';
+        var year = (d.release_date || d.first_air_date || '').slice(0, 4), genre = d.genres && d.genres[0] ? d.genres[0].name : '';
         return {
-            id: 'tm' + d.id, tmdb: d.id, imdb: d.imdb_id || '', tier: tier, title: d.title || d.original_title,
+            id: (tv ? 'tv' : 'tm') + d.id, tmdb: d.id, type: tv ? 'tv' : 'movie', imdb: d.imdb_id || (d.external_ids && d.external_ids.imdb_id) || '',
+            tier: tier, title: d.title || d.name || d.original_title || d.original_name,
             art: d.poster_path ? IMG + d.poster_path : '', bd: d.backdrop_path || '', bg: '#16181C',
             provider: primary || 'Not streaming', prov: streaming ? primary + (kind === 'rent' ? ' · rent' : '') : 'Not streaming',
             streaming: streaming, note: note,
-            meta: [year, genre, runtime(d.runtime), cert(d)].filter(Boolean).join(' · '),
+            meta: [year, genre, tv ? seasons(d) : runtime(d.runtime), tv ? certTv(d) : cert(d)].filter(Boolean).join(' · '),
             desc: d.overview || d.tagline || ''
         };
     }
@@ -177,6 +185,7 @@
     var NK = 'settle.notinterested.v1';
     function dismissed() { try { return JSON.parse(localStorage.getItem(NK)) || []; } catch (e) { return []; } }
     function dismiss(tmdb) {
+        if (/^tv:/.test(String(tmdb))) { var sc = load(SK); if (sc && sc.items) { sc.items = sc.items.filter(function (r) { return 'tv:' + r.tmdb !== tmdb; }); save(sc, SK); } }
         var l = dismissed().filter(function (x) { return x !== tmdb; });
         l.push(tmdb);
         try { localStorage.setItem(NK, JSON.stringify(l.slice(-600))); } catch (e) { /* silent */ }
@@ -238,32 +247,32 @@
 
     // Keep the cached copy in step with a watchlist toggle so a reload shows the same state.
     // A title you just added moves to the front, so it leads the rail next time it is built.
-    function setWl(tmdb, on) {
-        var c = load();
+    function setWl(tmdb, on, type) {
+        var c = load(type === 'tv' ? SK : CK);
         if (!c || !c.items) return;
         var i = -1;
         c.items.forEach(function (r, k) { if (r.tmdb === tmdb) { r.wl = !!on; i = k; } });
         if (on && i > 0 && c.src === 'trakt') c.items.unshift(c.items.splice(i, 1)[0]);
-        save(c);
+        save(c, type === 'tv' ? SK : CK);
     }
 
     // A title the user logged as watched stays out of the cached rail too.
-    function forget(tmdb) {
-        var c = load();
+    function forget(tmdb, type) {
+        var k = type === 'tv' ? SK : CK, c = load(k);
         if (!c || !c.items) return;
         c.items = c.items.filter(function (r) { return r.tmdb !== tmdb; });
-        save(c);
+        save(c, k);
     }
 
     /* IMDb rating for the movie panel. TMDB has only the IMDb id (imdb_id, or /movie/{id}/external_ids for a rail cached
        before it was kept); the rating comes from OMDb (www.omdbapi.com/?i=<imdb id>&apikey=<key>  ->  imdbRating), which
        needs a free key in config.local.js as keys.omdb. No key: no rating, nothing is asked. Asked only for the title
        in focus, kept for 7 days. */
-    var OMDB = (C.keys || {}).omdb, IK = 'settle.imdb.v1', IMDB_TTL = 7 * 86400000;
+    var OMDB = (C.keys || {}).omdb, IK = 'settle.imdb.v2', IMDB_TTL = 7 * 86400000;
     function imdbStore() { try { return JSON.parse(localStorage.getItem(IK)) || {}; } catch (e) { return {}; } }
-    function imdbKeep(id, v) {
+    function imdbKeep(id, v, rt) {
         var m = imdbStore(), ks;
-        m[id] = [v, Date.now()];
+        m[id] = [v, Date.now(), rt || ''];
         ks = Object.keys(m);
         if (ks.length > 300) ks.sort(function (a, b) { return m[a][1] - m[b][1]; }).slice(0, ks.length - 300).forEach(function (k) { delete m[k]; });
         try { localStorage.setItem(IK, JSON.stringify(m)); } catch (e) { /* silent */ }
@@ -271,22 +280,25 @@
     function imdbId(r) {
         if (r.imdb) return Promise.resolve(r.imdb);
         if (!r.tmdb || !KEY) return Promise.resolve('');
-        return get('/movie/' + r.tmdb + '/external_ids', '').then(function (j) { r.imdb = j.imdb_id || ''; return r.imdb; });
+        return get((r.type === 'tv' ? '/tv/' : '/movie/') + r.tmdb + '/external_ids', '').then(function (j) { r.imdb = j.imdb_id || ''; return r.imdb; });
     }
-    // cb('7.8') when there is a rating; nothing otherwise.
+    // cb('7.8', '93%'): the IMDb rating and the Rotten Tomatoes score (from the same OMDb answer, its Ratings list);
+    // either may be ''. Nothing is called when there is neither.
     function imdb(r, cb) {
         if (!OMDB || !r || r.connect) return;
         imdbId(r).then(function (id) {
             if (!id) return;
             var hit = imdbStore()[id];
-            if (hit && Date.now() - hit[1] < IMDB_TTL) { if (hit[0]) cb(hit[0]); return; }
+            if (hit && Date.now() - hit[1] < IMDB_TTL) { if (hit[0] || hit[2]) cb(hit[0], hit[2] || ''); return; }
             return fetch('https://www.omdbapi.com/?i=' + encodeURIComponent(id) + '&apikey=' + encodeURIComponent(OMDB)).then(function (x) {
                 if (!x.ok) throw new Error('omdb ' + x.status);
                 return x.json();
             }).then(function (j) {
-                var v = j && j.Response !== 'False' && /^\d+(\.\d)?$/.test(j.imdbRating || '') ? j.imdbRating : '';
-                imdbKeep(id, v);                                                  // "N/A" is remembered too, so it is not asked again
-                if (v) cb(v);
+                var ok = j && j.Response !== 'False', v = ok && /^\d+(\.\d)?$/.test(j.imdbRating || '') ? j.imdbRating : '';
+                var rt = ((ok && j.Ratings) || []).filter(function (x) { return x.Source === 'Rotten Tomatoes' && /^\d{1,3}%$/.test(x.Value || ''); })[0];
+                rt = rt ? rt.Value : '';
+                imdbKeep(id, v, rt);                                              // "N/A" is remembered too, so it is not asked again
+                if (v || rt) cb(v, rt);
             });
         }).catch(function () { /* no rating shown */ });
     }
@@ -303,8 +315,9 @@
     }
     function details(r) {
         if (!r || !r.tmdb || !KEY) return Promise.resolve(null);
-        if (more[r.tmdb]) return Promise.resolve(more[r.tmdb]);
-        return get('/movie/' + r.tmdb, 'append_to_response=credits,watch/providers,recommendations,videos&language=en-US').then(function (d) {
+        var tv = r.type === 'tv', mk = (tv ? 'tv' : 'm') + r.tmdb;
+        if (more[mk]) return Promise.resolve(more[mk]);
+        return get((tv ? '/tv/' : '/movie/') + r.tmdb, 'append_to_response=credits,watch/providers,recommendations,videos&language=en-US').then(function (d) {
             var wp = (d['watch/providers'] && d['watch/providers'].results && d['watch/providers'].results[REG]) || {};
             var crew = (d.credits && d.credits.crew) || [], cast = (d.credits && d.credits.cast) || [];
             function tag(list) { return names(list).map(function (n) { return { name: n, onTv: onTv(n) }; }); }
@@ -313,28 +326,87 @@
             var x = {
                 tagline: d.tagline || '', overview: d.overview || '',
                 genres: (d.genres || []).map(function (g) { return g.name; }),
-                released: d.release_date || '', runtime: runtime(d.runtime), language: lang,
-                directors: crew.filter(function (c) { return c.job === 'Director'; }).map(function (c) { return c.name; }).slice(0, 2),
+                released: d.release_date || d.first_air_date || '', runtime: tv ? seasons(d) : runtime(d.runtime), language: lang,
+                // a show has creators rather than a director
+                directors: (tv ? (d.created_by || []) : crew.filter(function (c) { return c.job === 'Director'; })).map(function (c) { return c.name; }).slice(0, 2),
+                created: tv,
                 cast: cast.slice(0, 5).map(function (c) { return c.name; }),
                 stream: tag(wp.flatrate), rent: tag((wp.rent || []).concat(wp.buy || [])),
                 trailer: trailerOf(d.videos && d.videos.results),
                 // More like this: TMDB's recommendations for the film, minus anything watched or dismissed here
                 like: ((d.recommendations && d.recommendations.results) || []).filter(function (m) {
-                    return m.poster_path && !m.adult && watchedLocal().indexOf(m.id) < 0 && dismissed().indexOf(m.id) < 0;
-                }).slice(0, 8).map(function (m) { return { tmdb: m.id, title: m.title || m.original_title, art: IMG + m.poster_path }; })
+                    return m.poster_path && !m.adult && (tv ? dismissed().concat(watchedLocal()).indexOf('tv:' + m.id) < 0 : watchedLocal().indexOf(m.id) < 0 && dismissed().indexOf(m.id) < 0);
+                }).slice(0, 8).map(function (m) { return { tmdb: m.id, type: tv ? 'tv' : 'movie', title: m.title || m.name || m.original_title || m.original_name, art: IMG + m.poster_path }; })
             };
-            more[r.tmdb] = x; moreIds.push(r.tmdb);
+            more[mk] = x; moreIds.push(mk);
             if (moreIds.length > 20) delete more[moreIds.shift()];
             return x;
         }).catch(function () { return null; });
     }
 
     // A full rail item for any film (a "More like this" pick): the same call and shape the rail uses.
-    function item(tmdb) { return KEY ? detail(tmdb) : Promise.resolve(null); }
+    function item(tmdb, type) { return !KEY ? Promise.resolve(null) : type === 'tv' ? showDetail(tmdb) : detail(tmdb); }
 
-    window.Recs = { imdb: imdb, details: details, item: item, dismiss: dismiss, forget: forget, addWatched: addWatched, short: short, cached: cached, refresh: refresh, refreshNow: function () { return refresh(true, true); }, setWl: setWl, hasKey: !!KEY };
-    window.addEventListener('load', function () { refresh(); });
+    /* TV shows rail: shows streaming on the apps you have first (TMDB discover/tv with your providers), popular shows to
+       fill, then ranked like the films (on your apps, included > rent > elsewhere). Your Trakt show watchlist joins the
+       Watchlist row. Once a day, cached whole; one call per show (tv/{id} with providers, rating and IMDb id). */
+    var SK = 'settle.shows.v1', SPK = 'settle.showpage.v1';
+    function showDetail(id) {
+        return get('/tv/' + id, 'append_to_response=watch/providers,content_ratings,external_ids&language=en-US')
+            .then(function (d) { return toItem(d, 'tv'); }).catch(function () { return null; });
+    }
+    function discoverTv(page, prov) {
+        var since = new Date(Date.now() - 3 * 365 * 86400000).toISOString().slice(0, 10);     // on air in the last ~3 years
+        return get('/discover/tv', 'watch_region=' + REG + '&with_watch_monetization_types=flatrate' +
+            (prov && prov.length ? '&with_watch_providers=' + prov.join('|') : '') +
+            '&sort_by=popularity.desc&vote_count.gte=100&air_date.gte=' + since + '&include_adult=false&language=en-US&page=' + (page || 1))
+            .then(function (j) { return (j.results || []).filter(function (m) { return m.poster_path; }).slice(0, 20).map(function (m) { return m.id; }); });
+    }
+    function cachedShows() { var c = load(SK); return c && c.region === REG && c.src === source() && c.items && c.items.length ? c.items : null; }
+    function refreshShows(force, manual) {
+        if (!KEY) return manual ? Promise.resolve() : undefined;
+        var c = load(SK), src = source(), T = window.Trakt;
+        if (force !== true && c && c.region === REG && c.src === src && c.day === today()) return manual ? Promise.resolve() : undefined;
+        var n = 0;
+        try { n = (+localStorage.getItem(SPK) || 0) + 1; localStorage.setItem(SPK, String(n)); } catch (e) { /* silent */ }
+        var page = (n % 3) + 1, ready = window.Platform ? window.Platform.ready() : Promise.resolve();
+        return ready.catch(function () {}).then(function () {
+            var prov = myProviders();
+            return Promise.all([prov.length ? discoverTv(page, prov).catch(function () { return []; }) : [], discoverTv(page).catch(function () { return []; }),
+                src === 'trakt' && T.watchlistShows ? T.watchlistShows().catch(function () { return []; }) : [],
+                src === 'trakt' && T.watchedShowIds ? T.watchedShowIds().catch(function () { return []; }) : []]);
+        }).then(function (r) {
+            // left out: shows you dismissed or watched (here, as 'tv:<id>', or on Trakt)
+            var gone = dismissed().concat(watchedLocal(), r[3].map(function (x) { return 'tv:' + x; }));
+            var wl = r[2].filter(function (x) { return gone.indexOf('tv:' + x) < 0; }).slice(0, 20);
+            var pool = r[0].concat(r[1].filter(function (x) { return r[0].indexOf(x) < 0; }))
+                .filter(function (x) { return wl.indexOf(x) < 0 && gone.indexOf('tv:' + x) < 0; }).slice(0, 2 * N);
+            return Promise.all(wl.concat(pool).map(showDetail)).then(function (items) {
+                items = items.filter(function (x) { return x && x.art; });
+                items.forEach(function (x) { x.wl = wl.indexOf(x.tmdb) >= 0; });
+                return items.filter(function (x) { return x.wl; }).concat(rank(items.filter(function (x) { return !x.wl; })).slice(0, N));
+            });
+        }).then(function (items) {
+            if (!items.length) return;
+            save({ day: today(), region: REG, src: src, items: items }, SK);
+            if (window.Settle && window.Settle.setShows) window.Settle.setShows(items, manual === true);
+        }).catch(function () { /* the cached shows stay */ });
+    }
+
+    // Films and shows matching a search (TMDB search/multi), as picks for the details popup; people and anything without
+    // a poster are left out.
+    function search(q) {
+        if (!KEY) return Promise.resolve([]);
+        return get('/search/multi', 'query=' + encodeURIComponent(q) + '&include_adult=false&language=en-US&page=1').then(function (j) {
+            return (j.results || []).filter(function (m) { return (m.media_type === 'movie' || m.media_type === 'tv') && m.poster_path; }).slice(0, 18).map(function (m) {
+                return { tmdb: m.id, type: m.media_type, title: m.title || m.name, art: IMG + m.poster_path, year: (m.release_date || m.first_air_date || '').slice(0, 4) };
+            });
+        }).catch(function () { return []; });
+    }
+
+    window.Recs = { search: search, shows: cachedShows, refreshShows: refreshShows, imdb: imdb, details: details, item: item, dismiss: dismiss, forget: forget, addWatched: addWatched, short: short, cached: cached, refresh: refresh, refreshNow: function () { refreshShows(true, true); return refresh(true, true); }, setWl: setWl, hasKey: !!KEY };
+    window.addEventListener('load', function () { refresh(); refreshShows(); });
     // Back from another app: refresh if the day changed, or if we were away long enough that picks may have moved.
     document.addEventListener('visibilitychange', function () { if (document.hidden) hiddenAt = Date.now(); });
-    (window.onWake = window.onWake || []).push(function () { refresh(hiddenAt && Date.now() - hiddenAt > AWAY ? true : undefined); });
+    (window.onWake = window.onWake || []).push(function () { var f = hiddenAt && Date.now() - hiddenAt > AWAY ? true : undefined; refresh(f); refreshShows(f); });
 })();

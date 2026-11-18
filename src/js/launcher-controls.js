@@ -54,6 +54,14 @@
                     window.Screensaver.setTimeoutMs(ms);
                     return Promise.resolve();
                 }
+                if (id === 'perf') {
+                    if (!window.Vetro || !window.Vetro.perfState) return Promise.reject(new Error('Not available'));
+                    return window.Vetro.perfState().then(function (s) {
+                        if (s === 'on') return window.Settle.setPerf(false).then(function () { return 'Off'; });
+                        window.Settle.askPerf();                                  // the panel closes; the question opens
+                        return null;
+                    });
+                }
                 if (id === 'recent') {
                     if (!window.Settle || !window.Settle.openSwitcher) return Promise.reject(new Error('Not available'));
                     window.Settle.openSwitcher(true);

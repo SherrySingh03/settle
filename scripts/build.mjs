@@ -5,6 +5,7 @@
 import { readFileSync, writeFileSync, readdirSync, statSync, mkdirSync, existsSync } from 'node:fs';
 import { deflateRawSync } from 'node:zlib';
 import { join, resolve, relative, sep } from 'node:path';
+import { joinApp } from './app-bundle.mjs';
 
 const root = resolve(import.meta.dirname, '..'), src = join(root, 'src'), dist = join(root, 'dist');
 const fonttest = process.argv.includes('--fonttest');
@@ -40,9 +41,10 @@ if (fonttest) {
 } else {
   for (const p of walk(src)) {
     const rel = relative(src, p).split(sep).join('/');
-    if (EXCLUDE.has(rel) || rel.startsWith('img/preview') || rel.split('/').some((s) => s.startsWith('.'))) continue;
+    if (EXCLUDE.has(rel) || rel.startsWith('img/preview') || rel.startsWith('js/app/') || rel.split('/').some((s) => s.startsWith('.'))) continue;
     files.set(rel, readFileSync(p));
   }
+  files.set('js/app.js', Buffer.from(joinApp(src)));           // the pieces in src/js/app/, joined into the one file the TV loads
   // index.html loads js/mock.js in the preview only; drop that tag so the TV never requests it.
   files.set('index.html', Buffer.from(files.get('index.html').toString('utf8').replace(/\s*<script src="js\/mock\.js"><\/script>/, '')));
   // which build is on the TV: shown in Diagnostics and in captures
@@ -112,7 +114,11 @@ const out = join(dist, fonttest ? 'settle-fonttest.wgt' : 'settle.wgt');
 writeFileSync(out, Buffer.concat([...parts, cd, end]));
 
 const js = names.filter((n) => n.endsWith('.js')).reduce((s, n) => s + files.get(n).length, 0);
-console.log(`${relative(root, out)}  ${(statSync(out).size / 1024).toFixed(0)} KB, ${names.length} files, JS ${(js / 1024).toFixed(1)} KB${rawJs && rawJs !== js ? ' (source ' + (rawJs / 1024).toFixed(1) + ' KB)' : ''}, CSS ${(minCss / 1024).toFixed(1)} KB (source ${(rawCss / 1024).toFixed(1)} KB)`);
+// The budget counts what loads at start (the <script> tags in index.html); Diagnostics, the Control Center and the
+// trailer cast load on first use.
+const bootNames = fonttest ? [] : [...files.get('index.html').toString('utf8').matchAll(/<script src="([^"]+)"/g)].map((m) => m[1]).filter((n) => files.has(n));
+const bootJs = bootNames.reduce((s, n) => s + files.get(n).length, 0);
+console.log(`${relative(root, out)}  ${(statSync(out).size / 1024).toFixed(0)} KB, ${names.length} files, JS ${(bootJs / 1024).toFixed(1)} KB at start + ${((js - bootJs) / 1024).toFixed(1)} KB on demand${rawJs && rawJs !== js ? ' (source ' + (rawJs / 1024).toFixed(1) + ' KB)' : ''}, CSS ${(minCss / 1024).toFixed(1)} KB (source ${(rawCss / 1024).toFixed(1)} KB)`);
 if (!fonttest && files.get('js/config.local.js').toString().includes('keys')) {
   console.log('NOTE: this package contains the API keys from js/config.local.js. Keep the .wgt private.');
 }

@@ -39,10 +39,12 @@ window.LAUNCHER_CONFIG = {
     // app list; home.media and home.sidebar are the ones running as Smart Hub there). Add your TV's if it differs.
     samsungHome: ['com.samsung.tv.home.media', 'com.samsung.tv.home.sidebar', 'com.samsung.tv.coba.newhome', 'com.samsung.tv.csfs', 'com.samsung.tv.coba.edenview'],
 
-    // Trailers play in the YouTube app through YouTube's cast protocol, which needs the app's screen id. Settle reads
-    // it through Vetro the first time (YouTube must be installed) and keeps it. Without Vetro, read it once from a
-    // computer while YouTube is open on the TV:  curl -H "Origin: https://www.youtube.com" http://<tv-ip>:8080/ws/apps/YouTube
-    // and copy <screenId> into config.local.js as  youtube: { screenId: '...' }.
+    // Trailers play in the YouTube app through YouTube's cast protocol, which needs the app's screen id. The TV's DIAL
+    // service may refuse to give it to anything on the TV itself (2025 QN70F: 401 from 127.0.0.1, Vetro included), so
+    // read it once from a computer on the same network:
+    //   curl -H "Origin: https://www.youtube.com" http://<tv-ip>:8080/ws/apps/YouTube
+    // and copy <screenId> into config.local.js as  youtube: { screenId: '...' }. It stays the same across restarts.
+    // Left empty, Settle tries to read it through Vetro.
     youtube: { screenId: '' },
 
     // Dynamic backdrop. images:false keeps only the colour fields (no backdrop pictures are fetched or decoded):
@@ -95,7 +97,12 @@ window.LAUNCHER_CONFIG = {
     weather: { latitude: null, longitude: null, label: '' },
     // width/height of the stored wallpaper. Measured on the TV: devicePixelRatio 1 and a 1920x1080 render surface,
     // so anything larger is decoded and then downscaled. 1920x1080 ~8 MB decoded, 2560x1440 ~14 MB, 3840x2160 ~33 MB.
-    wallpaper: { query: 'nature landscape', width: 1920, height: 1080 },
+    // query: Unsplash searches, used in turn (30 photos per search are fetched at once; the last 300 shown are skipped).
+    wallpaper: {
+        query: ['mountain landscape', 'ocean coast', 'forest', 'lake reflection', 'desert dunes', 'aurora night sky',
+                'waterfall', 'misty valley', 'canyon', 'snowy peaks', 'countryside fields', 'tropical beach'],
+        width: 1920, height: 1080
+    },
     // omdb: a free key from https://www.omdbapi.com/apikey.aspx, for the IMDb rating in the movie panel (none: no rating)
     keys: { tmdb: '', traktClientId: '', traktClientSecret: '', unsplash: '', omdb: '' }
 };

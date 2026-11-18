@@ -193,13 +193,14 @@
 
     function readAll() {
         var parts = Object.keys(ROWS).map(function (id) { return 'echo ' + rid(id) + ' $(' + AVOC + ROWS[id].get + ' 2>/dev/null)'; });
-        var cmd = parts.join('; ') + '; echo BT_BEGIN; ' + BT + 'get_connected_bt_speaker_info 2>&1; echo BT_END';
+        var cmd = parts.join('; ') + '; echo BT_BEGIN; ' + BT + 'get_connected_bt_speaker_info 2>&1; echo BT_END; echo GOV $(cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor 2>/dev/null)';
         return exec(cmd, true).then(function (r) {
             if (!r || r.sent) return null;
             var out = String(r.output || ''), st = { v: {} };
             Object.keys(ROWS).forEach(function (id) { st.v[id] = lineVal(out, id); });
             aiOn = st.v['p.mode'] === AI_PICTURE;
             var bt = /BT_BEGIN([\s\S]*?)BT_END/.exec(out);
+            var gov = /GOV (\w+)/.exec(out); st.gov = gov ? gov[1] : null;
             if (bt && !/error/i.test(bt[1])) { var m = /[0-9A-F]{2}(?::[0-9A-F]{2}){5}/i.exec(bt[1].toUpperCase()); st.btKnown = true; st.btMac = m ? m[0] : null; }
             return st;
         });
@@ -209,7 +210,8 @@
 
     function controls() {
         return [
-            { id: 'sleep', label: 'Sleep', kind: 'action', big: true, confirm: 'Press OK again to sleep' },
+            { id: 'sleep', label: 'Sleep', kind: 'action', confirm: 'Press OK again to sleep' },
+            { id: 'perf', label: 'Performance mode', kind: 'run' },
             { id: 'picture', label: 'Picture', kind: 'page' },
             { id: 'sound', label: 'Sound mode', kind: 'page' },
             { id: 'output', label: 'Audio output', kind: 'choice' },
@@ -266,6 +268,7 @@
         var ci = currentInput() || (assumed.input != null ? options('input').filter(function (o) { return o.id === String(assumed.input); })[0] : null);
         m.input = { value: ci ? ci.label : '—', current: ci ? ci.id : null };
         m.bluetooth = { value: 'Find devices', current: null };
+        m.perf = { value: st && st.gov ? (st.gov === 'performance' ? 'On · CPU at full speed' : 'Off') : (offline() || '—'), current: st && st.gov || null };
         return m;
     }
 
@@ -340,7 +343,30 @@
         });
     }
 
+    /* Performance mode: the CPU governor. 'performance' keeps all four cores at their full 1.7 GHz; 'interactive' (the
+       TV's own setting) lowers the clock when it can. One policy covers every core. The TV goes back to 'interactive'
+       on a restart. Resolves 'on' / 'off' as read back from the TV. */
+    function perf(on) {
+        var g = on ? 'performance' : 'interactive';
+        return exec('echo ' + g + ' > /sys/devices/system/cpu/cpufreq/policy0/scaling_governor 2>&1; cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor 2>&1', true).then(function (r) {
+            trace('perf', 'governor ' + g, r);
+            var now = r && r.output ? String(r.output).trim().split(/\s+/).pop() : '';
+            if (r && !r.sent && now !== g) throw new Error('the TV kept ' + (now || 'its setting'));
+            return on ? 'on' : 'off';
+        });
+    }
+    function perfState() {
+        return exec('cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor 2>&1', true).then(function (r) {
+            var g = r && r.output ? String(r.output).trim() : '';
+            return g === 'performance' ? 'on' : g === 'interactive' ? 'off' : 'unknown';
+        });
+    }
+
     function act(id, arg) {
+        if (id === 'perf') {
+            if (arg === 'on' || arg === 'off') return perf(arg === 'on');
+            return Promise.reject(new Error('on or off'));
+        }
         var cmd, v;
         if (ROWS[id]) return setRow(id, arg);
         if (id === 'sleep') {
@@ -479,6 +505,7 @@
         },
         // YouTube's cast screen id, from the TV's DIAL service (GET :8080/ws/apps/YouTube -> <screenId>), read on the TV
         // itself: a web app's own request is refused there. Only answers while YouTube is running. curl, else busybox wget.
+        perf: perf, perfState: perfState,
         youtubeScreen: function () {
             var u = 'http://127.0.0.1:8080/ws/apps/YouTube', o = 'Origin: https://www.youtube.com';
             return exec("(curl -s -m 3 -H '" + o + "' " + u + " || wget -q -T 3 -O - --header='" + o + "' " + u + ") 2>&1", true).then(function (r) {

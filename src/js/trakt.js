@@ -75,23 +75,38 @@
 
     function setWatchlist(rec, on) {
         if (!connected() || !rec.tmdb) return Promise.resolve();
-        return api('POST', on ? '/sync/watchlist' : '/sync/watchlist/remove', { movies: [{ ids: { tmdb: rec.tmdb } }] });
+        var body = {}; body[rec.type === 'tv' ? 'shows' : 'movies'] = [{ ids: { tmdb: rec.tmdb } }];
+        return api('POST', on ? '/sync/watchlist' : '/sync/watchlist/remove', body);
+    }
+    // tmdb ids of the shows on your watchlist, most recently added first
+    function watchlistShows() {
+        return api('GET', '/sync/watchlist/shows/added/desc').then(function (list) {
+            return (list || []).map(function (e) { return e.show && e.show.ids && e.show.ids.tmdb; }).filter(Boolean);
+        });
     }
 
     // Logs a watch (now) and, if given, a 1-10 rating. Trakt takes a watched title off your watchlist by itself.
     // Rejects on any failure so the UI can put the title back.
+    // A show goes in as a show: Trakt adds every aired episode to your history, which is what its recommendations learn from.
     function markWatched(rec, rating, fav) {
         if (!connected() || !rec.tmdb) return Promise.reject(new Error('auth'));
-        var ids = { tmdb: rec.tmdb };
-        return api('POST', '/sync/history', { movies: [{ ids: ids, watched_at: new Date().toISOString() }] }).then(function () {
-            return api('POST', '/sync/watchlist/remove', { movies: [{ ids: ids }] }).catch(function () { /* best effort: Trakt usually does this itself */ });
+        var key = rec.type === 'tv' ? 'shows' : 'movies', ids = { tmdb: rec.tmdb };
+        function body(extra) { var b = {}, it = { ids: ids }; for (var k in extra) it[k] = extra[k]; b[key] = [it]; return b; }
+        return api('POST', '/sync/history', body({ watched_at: new Date().toISOString() })).then(function () {
+            return api('POST', '/sync/watchlist/remove', body({})).catch(function () { /* best effort: Trakt usually does this itself */ });
         }).then(function () {
             if (!rating) return null;
-            return api('POST', '/sync/ratings', { movies: [{ ids: ids, rating: rating }] });
+            return api('POST', '/sync/ratings', body({ rating: rating }));
         }).then(function () {
             // Favorites uses the same body as the watchlist. A refusal (it may need Trakt VIP) must not undo the watch: report it instead.
             if (!fav) return null;
-            return api('POST', '/sync/favorites', { movies: [{ ids: ids }] }).then(function () { return null; }, function () { return 'fav'; });
+            return api('POST', '/sync/favorites', body({})).then(function () { return null; }, function () { return 'fav'; });
+        });
+    }
+    // tmdb ids of every show you have watched (any episode), so none is offered again on the TV shows rail
+    function watchedShowIds() {
+        return api('GET', '/sync/watched/shows').then(function (list) {
+            return (list || []).map(function (e) { return e.show && e.show.ids && e.show.ids.tmdb; }).filter(Boolean);
         });
     }
 
@@ -151,5 +166,5 @@
     });
 
     window.Trakt = { enabled: enabled, connected: connected, disconnect: disconnect, start: start, cancel: cancel,
-        recommendations: recommendations, watchlist: watchlist, setWatchlist: setWatchlist, markWatched: markWatched, watchedIds: watchedIds, hideRecommendation: hideRecommendation };
+        recommendations: recommendations, watchlist: watchlist, watchlistShows: watchlistShows, setWatchlist: setWatchlist, markWatched: markWatched, watchedIds: watchedIds, watchedShowIds: watchedShowIds, hideRecommendation: hideRecommendation };
 })();

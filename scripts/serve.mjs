@@ -2,6 +2,7 @@
 import { createServer } from 'node:http';
 import { readFile, writeFile, access } from 'node:fs/promises';
 import { extname, join, normalize, resolve, sep } from 'node:path';
+import { joinApp } from './app-bundle.mjs';
 
 const root = resolve(import.meta.dirname, '..', 'src');
 const local = join(root, 'js', 'config.local.js');
@@ -19,7 +20,7 @@ createServer(async (req, res) => {
   const file = normalize(join(root, path === '/' ? 'index.html' : path));
   if (file !== root && !file.startsWith(root + sep)) { res.writeHead(403).end(); return; }
   try {
-    const body = await readFile(file);
+    const body = path === '/js/app.js' ? Buffer.from(joinApp(root)) : await readFile(file);      // joined from src/js/app/ on every request
     res.writeHead(200, { 'Content-Type': types[extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
     res.end(body);
   } catch { res.writeHead(404).end('Not found'); }
