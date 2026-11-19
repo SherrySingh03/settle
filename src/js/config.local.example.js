@@ -8,7 +8,8 @@ window.LAUNCHER_LOCAL = {
     traktClientId: '',      // personal picks, watchlist, Watched, Not interested  https://trakt.tv/oauth/applications
     traktClientSecret: '',  // optional: device login works without it
     omdb: '',               // IMDb ratings  https://www.omdbapi.com/apikey.aspx
-    unsplash: ''            // daily wallpaper  https://unsplash.com/developers
+    unsplash: '',           // daily wallpaper  https://unsplash.com/developers
+    youtube: ''             // optional: "Trending on YouTube" above the dock (YouTube Data API v3 key)  https://console.cloud.google.com/apis/library/youtube.googleapis.com
   },
   region: 'IN',             // where-to-watch country (ISO 3166-1)
   locale: 'en-GB',

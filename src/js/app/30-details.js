@@ -20,6 +20,8 @@ function dtButtons() {
     $('dt-wl').lastChild.textContent = r.wl ? 'On watchlist' : 'Watchlist';
     $('dt-wl').classList.toggle('done', !!r.wl);
     $('dt-tr').style.display = DT.trailer ? '' : 'none';
+    $('dt-alt').style.display = DT.alt ? '' : 'none';
+    if (DT.alt) $('dt-alt').lastChild.textContent = 'Open in ' + DT.alt;
     var bs = dtBtns();
     if (DT.b >= bs.length) DT.b = bs.length - 1;
     setOn('dt', DT.f === 'b' ? bs[DT.b] : null);
@@ -29,7 +31,28 @@ function dtButtons() {
     $('dt-hint').textContent = DT.f === 'l' ? 'OK: see this one · ▲ buttons · Back' + (DT.stack.length ? ': previous film' : '')
         : (DT.cells.length ? '▼ More like this · ' : '') + 'OK · Back' + (DT.stack.length ? ': previous film' : ' to close');
 }
-function dtBtns() { return DT.trailer ? [$('dt-open'), $('dt-tr'), $('dt-wl')] : [$('dt-open'), $('dt-wl')]; }
+function dtBtns() { return [$('dt-open'), DT.alt && $('dt-alt'), DT.trailer && $('dt-tr'), $('dt-wl')].filter(Boolean); }
+// A second service you have that streams this title: its own Open button, so you're not tied to the first one.
+function altService(r, stream) {
+    var mine = stream.filter(function (p) { return p.onTv && p.name !== r.provider; })[0];
+    return mine && !r.loading && r.streaming !== false ? mine.name : '';
+}
+// The overview fits three lines; when it doesn't, it ends at the last full sentence that fits (or a word, with an ellipsis).
+function setDesc(text) {
+    var el = $('dt-desc');
+    el.textContent = text || '';
+    if (!text || el.scrollHeight <= el.clientHeight + 2) return;
+    var parts = text.match(/[^.!?]+[.!?]+["')\]]*\s*/g) || [text], out = '';
+    for (var i = 0; i < parts.length; i++) {
+        el.textContent = out + parts[i];
+        if (el.scrollHeight > el.clientHeight + 2) break;
+        out += parts[i];
+    }
+    if (out) { el.textContent = out.trim(); return; }
+    var words = text.split(' '), lo = 1, hi = words.length;           // not even one sentence fits: cut at a word
+    while (lo < hi) { var mid = (lo + hi + 1) >> 1; el.textContent = words.slice(0, mid).join(' ') + '…'; if (el.scrollHeight > el.clientHeight + 2) hi = mid - 1; else lo = mid; }
+    el.textContent = words.slice(0, lo).join(' ') + '…';
+}
 function playTrailer() {
     var key = DT.trailer, title = DT.r.title;
     need(['js/youtube.js'], function () {                             // loaded on the first trailer
@@ -38,7 +61,7 @@ function playTrailer() {
 }
 // The same film object wherever it already is (a rail row), so the watchlist state is shared.
 function known(tmdb, type) {
-    var all = rows[0].list.concat(rows[1].list, rows[2].list);
+    var all = rows[0].list.concat(rows[1].list, rows[2].list, rows[3].list);
     for (var i = 0; i < all.length; i++) if (all[i].tmdb === tmdb && (all[i].type || 'movie') === (type || 'movie')) return all[i];
     return null;
 }
@@ -68,7 +91,7 @@ function fromPick(p) {
 }
 function openLike(p) { DT.stack.push(DT.r); showDetails(fromPick(p)); }
 function showDetails(r) {
-    DT.r = r; DT.b = 0; DT.f = 'b'; DT.li = 0; DT.like = []; DT.trailer = '';
+    DT.r = r; DT.b = 0; DT.f = 'b'; DT.li = 0; DT.like = []; DT.trailer = ''; DT.alt = '';
     if (window.DeepLinks) window.DeepLinks.prefetch(r);
     var poster = $('dt-poster');
     poster.textContent = ''; poster.style.background = r.bg || '#2E323A';
@@ -78,7 +101,7 @@ function showDetails(r) {
     $('dt-tag').textContent = '';
     $('dt-mt').textContent = r.meta || '';
     $('dt-imdb').classList.remove('on'); $('dt-rt').classList.remove('on');
-    $('dt-desc').textContent = r.desc || '';
+    setDesc(r.desc);
     var facts = $('dt-facts');
     facts.textContent = '';
     if (r.note) facts.appendChild(fact('Where', r.note.replace(/ · .*/, '')));
@@ -90,12 +113,14 @@ function showDetails(r) {
         if (!x || !DT || DT.r !== r) return;
         likeRow(x.like || []);
         DT.trailer = P.providerApp('YouTube') ? x.trailer || '' : '';   // only offered when YouTube is on the TV
+        DT.alt = altService(r, x.stream || []);
         dtButtons();
         $('dt-tag').textContent = x.tagline;
-        if (x.overview) $('dt-desc').textContent = x.overview;
+        if (x.overview) setDesc(x.overview);
         if (x.genres.length) $('dt-mt').textContent = [(x.released || '').slice(0, 4), x.genres.slice(0, 3).join(', '), x.runtime].filter(Boolean).join(' · ');
         facts.textContent = '';
         if (x.directors.length) facts.appendChild(fact(x.created ? 'Created by' : x.directors.length > 1 ? 'Directors' : 'Director', x.directors.join(', ')));
+        if (r.next) facts.appendChild(fact('Up next', r.next.code + (r.next.title ? ' · ' + r.next.title : '')));
         if (x.cast.length) facts.appendChild(fact('Starring', x.cast.join(', ')));
         facts.appendChild(fact('Stream on', x.stream.length ? provList(x.stream) : 'Not streaming in your region', true));
         if (x.rent.length) facts.appendChild(fact('Rent or buy', provList(x.rent), true));
@@ -118,7 +143,7 @@ function closeDetails() {
     $('dt').classList.remove('open'); stage.classList.remove('dt-open');
     setOn('dt', null); setOn('lk', null);
     var from = DT ? DT.from : 'act';
-    $('dt-lrow').textContent = '';
+    $('dt-lrow').textContent = ''; $('dt-poster').textContent = '';   // let the decoded pictures go
     DT = null;
     S.zone = from; armIdle(); paint();
     if (from === 'srch') srFocus('res');                          // back to the result it came from
@@ -144,6 +169,7 @@ function dtKey(d) {
         if (b.id === 'dt-tr') { playTrailer(); return; }
         if (DT.r.loading) return;
         if (b.id === 'dt-open') { openItem(DT.r); return; }
+        if (b.id === 'dt-alt') { var o = {}; Object.keys(DT.r).forEach(function (k) { o[k] = DT.r[k]; }); o.provider = DT.alt; openItem(o); return; }
         toggleWatchlist(DT.r); dtButtons();
     }
 }

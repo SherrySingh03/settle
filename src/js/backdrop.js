@@ -110,5 +110,5 @@
         root.classList.remove('on'); stage.classList.remove('bd-on');
     }
 
-    window.Backdrop = { focus: focus, rest: rest, prefetch: prefetch, active: function () { return key; } };
+    window.Backdrop = { focus: focus, rest: rest };
 })();

@@ -110,6 +110,32 @@
         });
     }
 
+    // Up next. GET /sync/watched/shows?extended=noseasons lists the shows you've watched with last_watched_at; for the
+    // most recent ones, GET /shows/{trakt id}/progress/watched gives next_episode (season, number, title, ids), or none
+    // when you're up to date. Only aired episodes count, so a finished season with nothing new drops out by itself.
+    function nextEpisode(traktShowId) {
+        return api('GET', '/shows/' + traktShowId + '/progress/watched').then(function (p) {
+            var n = p && p.next_episode;
+            return n && n.ids && n.ids.trakt ? { season: n.season, number: n.number, title: n.title || '', trakt: n.ids.trakt } : null;
+        });
+    }
+    function upNext(max) {
+        return api('GET', '/sync/watched/shows?extended=noseasons').then(function (list) {
+            var recent = (list || []).filter(function (e) { return e.show && e.show.ids && e.show.ids.trakt && e.show.ids.tmdb; })
+                .sort(function (a, b) { return String(b.last_watched_at || '').localeCompare(String(a.last_watched_at || '')); })
+                .slice(0, max || 10);
+            return Promise.all(recent.map(function (e) {
+                return nextEpisode(e.show.ids.trakt).then(function (n) {
+                    return n ? { tmdb: e.show.ids.tmdb, trakt: e.show.ids.trakt, next: n } : null;
+                }, function () { return null; });
+            })).then(function (l) { return l.filter(Boolean); });
+        });
+    }
+    // One episode into your history (POST /sync/history with episodes: [{ ids: { trakt }, watched_at }]).
+    function markEpisode(traktEpisodeId) {
+        return api('POST', '/sync/history', { episodes: [{ ids: { trakt: traktEpisodeId }, watched_at: new Date().toISOString() }] });
+    }
+
     // "Not interested": hides the film from Trakt's recommendations for good (DELETE /recommendations/movies/{id}, 204).
     // That call takes a Trakt id; one the rail did not keep is looked up by tmdb id (GET /search/tmdb/{id}?type=movie).
     function hideRecommendation(rec) {
@@ -165,6 +191,6 @@
         if (!document.hidden) poll(flow, flow.ui, 800);
     });
 
-    window.Trakt = { enabled: enabled, connected: connected, disconnect: disconnect, start: start, cancel: cancel,
+    window.Trakt = { upNext: upNext, nextEpisode: nextEpisode, markEpisode: markEpisode, enabled: enabled, connected: connected, disconnect: disconnect, start: start, cancel: cancel,
         recommendations: recommendations, watchlist: watchlist, watchlistShows: watchlistShows, setWatchlist: setWatchlist, markWatched: markWatched, watchedIds: watchedIds, watchedShowIds: watchedShowIds, hideRecommendation: hideRecommendation };
 })();

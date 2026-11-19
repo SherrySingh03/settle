@@ -23,9 +23,45 @@ function closeAsk() {
     S.zone = from === null || from === 'cc' ? 'dock' : from; armIdle(); paint();
 }
 function askKey(d) {
+    if (ASK && ASK.form) return formKey(d);
     if (d === 'B') return closeAsk();
     if (d === 'L' || d === 'R') { ASK.b = d === 'L' ? 0 : 1; askPaint(); return; }
     if (d === 'OK') { var yes = ASK.b === 0 ? ASK.yes : null; closeAsk(); if (yes) yes(); }
+}
+
+/* A small form in the same frame: a few choices, then Save / Cancel.
+     openForm({ title, fields: [{ label, opts: [{ id, label }], i }], note, yes, no }, onSave(indexes))
+   Up / Down move between the choices and the buttons, Left / Right change a choice (or pick a button). */
+function openForm(o, onSave) {
+    openAsk({ title: o.title, lines: [], yes: o.yes, no: o.no }, null);
+    ASK.form = o.fields; ASK.fi = 0; ASK.save = onSave; ASK.b = 0;
+    var body = $('ask-body');
+    ASK.rows = o.fields.map(function (f) {
+        var li = h('li', 'fld'), v = h('span', 'fv');
+        li.appendChild(h('span', 'fl', f.label)); li.appendChild(v);
+        body.appendChild(li);
+        return { li: li, v: v };
+    });
+    if (o.note) body.appendChild(h('li', 'fnote', o.note));
+    formPaint();
+}
+function formPaint() {
+    ASK.form.forEach(function (f, k) { ASK.rows[k].v.textContent = '‹  ' + f.opts[f.i].label + '  ›'; });
+    var onRow = ASK.fi < ASK.form.length;
+    setOn('ask', onRow ? ASK.rows[ASK.fi].li : (ASK.b === 0 ? $('ask-yes') : $('ask-no')));
+}
+function formKey(d) {
+    var n = ASK.form.length, f = ASK.form[ASK.fi];
+    if (d === 'B') return closeAsk();
+    if (d === 'U') { if (ASK.fi > 0) ASK.fi--; }
+    else if (d === 'D') { if (ASK.fi < n) ASK.fi++; }
+    else if ((d === 'L' || d === 'R') && f) f.i = (f.i + (d === 'R' ? 1 : f.opts.length - 1)) % f.opts.length;
+    else if (d === 'L' || d === 'R') ASK.b = d === 'L' ? 0 : 1;
+    else if (d === 'OK') {
+        if (f) { ASK.fi++; }                                           // OK on a choice moves on to the next
+        else { var save = ASK.b === 0 ? ASK.save : null, vals = ASK.form.map(function (x) { return x.i; }); closeAsk(); if (save) save(vals); return; }
+    }
+    formPaint();
 }
 
 /* Performance mode: the CPU stays at its full 1.7 GHz instead of slowing down when it can (the 'performance' CPU

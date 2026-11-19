@@ -5,7 +5,7 @@
         // Exercises the icon pipeline in the browser: one good icon, one unreadable path (-> text chip).
         icons: { 'Netflix': 'img/preview-wide.svg', 'YouTube': '/nonexistent/res/ignition.png', 'Spotify': 'img/preview-icon.svg', 'Plex': '/nonexistent/res/ignition.png', 'Kodi': 'img/preview-generic.svg', 'Apple Music': 'img/preview-generic.svg' },
         // Extra installed apps so the dock editor has something to add in the browser preview.
-        apps: ['Xbox', 'Disney+', 'Twitch', 'Apple Music', 'Kodi', 'Crunchyroll', 'Weather', 'Calendar', 'Photos', 'Browser', 'Gallery', 'Fitness', 'Music', 'News', 'Games', 'Radio', 'Podcasts', 'Maps', 'Sling', 'Hulu', 'Tubi', 'Pluto TV', 'a1 Sorting Test'],
+        apps: ['Xbox', 'Disney+', 'Twitch', 'Apple Music', 'Stremio', 'Kodi', 'Crunchyroll', 'Weather', 'Calendar', 'Photos', 'Browser', 'Gallery', 'Fitness', 'Music', 'News', 'Games', 'Radio', 'Podcasts', 'Maps', 'Sling', 'Hulu', 'Tubi', 'Pluto TV', 'a1 Sorting Test'],
         // Things the TV lists as visible but that are not applications: they must never reach All apps.
         hidden: ['ep-dataservice-app', 'adplatform.ADPlayer', 'klciSQIYEM.ContinueWatchingService', 'org.tizen.settings-service', 'WykOS4t4F0.cmsWebApp'],
         // Apps "running" in the preview, for the app switcher (ids as the mock app list makes them).

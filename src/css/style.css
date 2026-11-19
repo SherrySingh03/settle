@@ -34,6 +34,14 @@ button{font-family:inherit}
 
 #caption{right:96px;top:150px;display:flex;flex-direction:column;align-items:flex-end;font-size:24px;line-height:32px;color:var(--t3);transition:opacity var(--m) var(--ease)}
 #cap1{font-weight:400;color:var(--t2)}
+#cap1,#cap2{max-width:820px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Legibility: soft shade under the corners that carry text (clock, weather, credit, hints), and in full screen a wide
+   pool of shade behind the centred clock. Static gradients; only their opacity changes with the mode. */
+/* Legibility on bright photos: a soft shadow on the text itself, drawn once inside layers that exist anyway. (Full-screen
+   shade layers did the same job but had to be blended on every frame of the dock <-> full screen / rails transitions,
+   which made Up and Down from the dock lag on the TV.) The wallpaper also has a shade baked in (wallpaper.js). */
+.amb,#hint,#appinfo,#amb-full{text-shadow:0 2px 14px rgba(0,0,0,.5),0 1px 3px rgba(0,0,0,.4)}
+#caption{text-shadow:0 1px 4px rgba(0,0,0,.5)}             /* dim small text: a wide shadow only muddies it */
 .m-rail #caption{opacity:0}
 
 #hero{left:96px;top:216px;width:1100px;opacity:0;transform:translateY(16px);transition:opacity var(--m) var(--ease),transform var(--m) var(--ease)}
@@ -100,7 +108,7 @@ button{font-family:inherit}
 #dt-lhead{display:flex;justify-content:space-between;align-items:center;height:32px}
 #dt-ll{font-size:26px;line-height:32px;font-weight:600;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:1000px;opacity:0}
 #dt-like.has #dt-ll{opacity:1}
-#dt-hint{font-size:24px;line-height:32px;color:var(--t3);white-space:nowrap}
+#dt-hint{position:absolute;left:0;top:220px;font-size:24px;line-height:32px;color:var(--t3);white-space:nowrap}   /* every screen's hint sits on the same bottom line (y 1000) */
 #dt-lrow{margin-top:16px;display:flex;gap:24px}
 .lk .tile{width:112px;height:168px;border-radius:8px;outline:3px solid transparent;transition:transform var(--f) var(--pop)}
 .lk .tile img{object-fit:cover}
@@ -129,14 +137,14 @@ button{font-family:inherit}
 .rrow{left:96px;top:956px;transition:opacity var(--m) var(--apple)}
 .m-rail #col{transform:translateY(calc(-348px - var(--rowpos, 0) * 436px))}
 .m-rail .rrow.above{opacity:0}
-#rlabel,#rlabel2,#rlabel3{display:flex;align-items:center;gap:14px;height:32px;font-size:28px;font-weight:600;font-stretch:125%;letter-spacing:.14em;text-transform:uppercase;color:var(--t2);white-space:nowrap}
+#rlabel,#rlabel2,#rlabel3,#rlabel4{display:flex;align-items:center;gap:14px;height:32px;font-size:28px;font-weight:600;font-stretch:125%;letter-spacing:.14em;text-transform:uppercase;color:var(--t2);white-space:nowrap}
 .sq{width:14px;height:14px;border-radius:2px;background:var(--acc)}
 #rempty{position:absolute;left:0;top:48px;font-size:26px;line-height:32px;font-weight:500;color:var(--t2);white-space:nowrap;display:none}
 #rempty.on{display:block}
-#rtrack,#rtrack2,#rtrack3{position:absolute;left:0;top:72px;display:flex;gap:32px;opacity:0;transition:transform var(--m) var(--ease),opacity var(--m) var(--apple)}
-.m-rail #rtrack,.m-rail #rtrack2,.m-rail #rtrack3{opacity:1}
+#rtrack,#rtrack2,#rtrack3,#rtrack4{position:absolute;left:0;top:72px;display:flex;gap:32px;opacity:0;transition:transform var(--m) var(--ease),opacity var(--m) var(--apple)}
+.m-rail #rtrack,.m-rail #rtrack2,.m-rail #rtrack3,.m-rail #rtrack4{opacity:1}
 @keyframes recsIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
-#rtrack.recs-in,#rtrack2.recs-in,#rtrack3.recs-in{animation:recsIn 200ms var(--apple) backwards}
+#rtrack.recs-in,#rtrack2.recs-in,#rtrack3.recs-in,#rtrack4.recs-in{animation:recsIn 200ms var(--apple) backwards}
 
 .cell{position:relative;flex:none}
 .tile{position:relative;overflow:hidden;transform-origin:50% 50%;transition:transform var(--f) var(--pop);background:#2E323A}
@@ -206,6 +214,8 @@ button{font-family:inherit}
 #wx-full{margin-top:12px;display:flex;justify-content:center;align-items:center;gap:14px;font-size:32px;line-height:40px;color:var(--t2)}
 #hint{left:0;top:644px;width:1920px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:24px;line-height:32px;font-weight:500;color:var(--t2);opacity:0;transform:translateY(10px);transition:opacity var(--m) var(--apple),transform var(--m) var(--apple)}
 .z-dock #hint{opacity:1;transform:none}
+.learned-full #hint,.learned-srch #full-hint{visibility:hidden}
+.no-wx #act-line .dot,.no-wx #al-i,.no-wx #wx-rest,.no-wx #wx-full{display:none}
 #hint svg{fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
 .erow{flex:none;height:72px;border-radius:8px;padding:0 28px;display:flex;align-items:center;justify-content:space-between;font-size:28px;font-weight:600;background:rgba(255,255,255,.14)}
 .erow .am{font-size:24px;font-weight:600;color:var(--acc)}
@@ -214,11 +224,11 @@ button{font-family:inherit}
 .erow.on .off{color:var(--t2)}
 .erow.reset{margin-top:12px;background:transparent;border:2px solid rgba(255,255,255,.28)}
 .erow.reset.on{border-color:var(--t1)}
-#appinfo{left:96px;top:536px;width:640px;opacity:0;transform:translateY(8px);transition:opacity var(--m) var(--apple),transform var(--m) var(--apple)}
+#appinfo{left:96px;top:536px;width:1000px;opacity:0;transform:translateY(8px);transition:opacity var(--m) var(--apple),transform var(--m) var(--apple)}
 .z-dock #appinfo.has{opacity:1;transform:none}
 #ai-label{font-size:24px;line-height:32px;font-weight:600;font-stretch:125%;letter-spacing:.14em;text-transform:uppercase;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #ai-title{margin-top:4px;font-size:52px;line-height:60px;font-weight:650;font-stretch:112%;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#ai-meta{margin-top:4px;font-size:28px;line-height:32px;font-weight:500;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#ai-meta{max-width:640px;margin-top:4px;font-size:28px;line-height:32px;font-weight:500;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* All apps: wallpaper dimmed to rail-mode opacity, the home layers stepped aside */
 .m-apps #wall{opacity:.30}
@@ -251,6 +261,8 @@ button{font-family:inherit}
 #sr-ll{position:absolute;left:96px;top:420px;width:1728px;height:40px;text-align:center;font-size:32px;line-height:40px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #sr-clip{position:absolute;left:96px;top:480px;width:1728px;height:330px;overflow:hidden;padding:12px 10px 0;display:flex}
 #sr-clip.few{justify-content:center}
+.srapp{width:184px;height:276px;display:flex;align-items:center;justify-content:center}.srapp .atile{width:184px;height:184px}
+.srapp.on .tile{transform:scale(1.08);outline-color:rgba(255,255,255,.92)}
 #sr-row{display:flex;gap:32px;transition:transform var(--m) var(--ease)}
 .srcell{height:300px}
 #sr-empty{position:absolute;left:0;top:500px;width:1920px;text-align:center;font-size:28px;line-height:36px;color:var(--t2)}
@@ -264,6 +276,10 @@ button{font-family:inherit}
 #ask-title{font-size:52px;line-height:60px;font-weight:650;font-stretch:112%}
 #ask-body{margin:28px 0 0 32px;font-size:28px;line-height:40px;color:var(--t2)}
 #ask-body li{margin-bottom:14px}
+#ask-body li.fld{list-style:none;margin-left:-32px;display:flex;justify-content:space-between;align-items:center;height:72px;padding:0 28px;border-radius:16px;background:rgba(255,255,255,.08);outline:3px solid transparent;color:var(--t1)}
+#ask-body li.fld.on{background:rgba(255,255,255,.18);outline-color:rgba(255,255,255,.92)}
+#ask-body .fv{font-weight:600}
+#ask-body li.fnote{list-style:none;margin:22px 0 0 -32px;font-size:24px;line-height:32px;color:var(--t3)}
 #ask-row{margin-top:36px;display:flex;gap:20px}
 #ask-row .btn{flex:none;white-space:nowrap}
 #ask-hint{margin-top:28px;font-size:24px;line-height:32px;color:var(--t3)}
@@ -303,7 +319,7 @@ button{font-family:inherit}
 #sh-title{font-size:52px;line-height:60px;font-weight:650;font-stretch:112%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #sh-sub{margin:8px 0 28px;font-size:24px;line-height:32px;color:var(--t2)}
 #sh-list{display:flex;flex-direction:column;gap:12px}
-#a-hint{position:absolute;left:96px;top:1030px;font-size:24px;line-height:32px;color:var(--t3);white-space:nowrap}
+#a-hint{position:absolute;left:96px;top:1000px;font-size:24px;line-height:32px;color:var(--t3);white-space:nowrap}
 
 /* ---- Apple-style motion (all 200 ms or less, transform + opacity only) ----
    --apple: a sharp ease-out for things that arrive; --pop: a small overshoot for focus lifts. */

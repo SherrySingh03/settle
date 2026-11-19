@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets"
-        id="http://settle.tv/launcher" version="0.1.0" viewmodes="maximized">
+        id="http://settle.tv/launcher" version="1.0.0" viewmodes="maximized">
     <!-- package must be exactly 10 alphanumeric characters -->
     <tizen:application id="SettleTv01.Settle" package="SettleTv01" required_version="3.0"/>
     <content src="index.html"/>

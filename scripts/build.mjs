@@ -1,6 +1,8 @@
 // Packages src/ into dist/settle.wgt (unsigned; sign/install with your usual Tizen tooling).
 //   node scripts/build.mjs              -> dist/settle.wgt
 //   node scripts/build.mjs --fonttest   -> dist/settle-fonttest.wgt (only the font-stretch test page)
+//   node scripts/build.mjs --public     -> dist/Settle-<version>.wgt for a GitHub release and the Apps2Samsung catalogue:
+//                                          none of your keys or addresses, the settings file Apps2Samsung fills in on install
 // Zero dependencies: a minimal zip writer (deflate, forward-slash paths, config.xml first).
 import { readFileSync, writeFileSync, readdirSync, statSync, mkdirSync, existsSync } from 'node:fs';
 import { deflateRawSync } from 'node:zlib';
@@ -8,7 +10,8 @@ import { join, resolve, relative, sep } from 'node:path';
 import { joinApp } from './app-bundle.mjs';
 
 const root = resolve(import.meta.dirname, '..'), src = join(root, 'src'), dist = join(root, 'dist');
-const fonttest = process.argv.includes('--fonttest');
+const fonttest = process.argv.includes('--fonttest'), pub = process.argv.includes('--public');
+const PUBLIC_CONFIG = join(root, 'packaging', 'apps2samsung', 'config.local.js');
 
 if (!existsSync(join(src, 'icon.png'))) await import('./make-icon.mjs');
 
@@ -81,6 +84,24 @@ for (const [name, buf] of files) {
   minCss += Buffer.byteLength(min);
 }
 
+// ---- public build: the catalogue's settings file in place of yours, as written (its "find" lines must survive) ----
+if (pub) {
+  files.set('js/config.local.js', readFileSync(PUBLIC_CONFIG));
+  // Nothing of yours may ride along: every quoted value of 6+ characters in your config.local.js, and any private IPv4 address.
+  let mine = [];
+  try { mine = [...readFileSync(join(src, 'js', 'config.local.js'), 'utf8').matchAll(/['"]([^'"\s]{6,})['"]/g)].map((m) => m[1]); } catch { /* no local file */ }
+  const leaks = [];
+  for (const [name, buf] of files) {
+    if (/\.(png|jpe?g|woff2?|gif|webp)$/.test(name)) continue;
+    const text = buf.toString('utf8');
+    for (const v of mine) if (text.includes(v)) leaks.push(name + ': a value from your config.local.js');
+    for (const m of text.matchAll(/\b(?:10|192\.168|172\.(?:1[6-9]|2\d|3[01]))(?:\.\d{1,3}){2,3}\b/g)) {
+      if (m[0].split('.').length === 4) leaks.push(name + ': the address ' + m[0].replace(/\.\d+$/, '.x'));
+    }
+  }
+  if (leaks.length) { console.error('Public build stopped, this would be published:\n  ' + [...new Set(leaks)].join('\n  ')); process.exit(1); }
+}
+
 // ---- minimal zip ----
 const T = new Uint32Array(256).map((_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
 const crc32 = (b) => { let c = 0xffffffff; for (const x of b) c = T[(c ^ x) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
@@ -110,7 +131,8 @@ end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(names.length, 8); end.writeU
 end.writeUInt32LE(cd.length, 12); end.writeUInt32LE(offset, 16);
 
 mkdirSync(dist, { recursive: true });
-const out = join(dist, fonttest ? 'settle-fonttest.wgt' : 'settle.wgt');
+const version = (readFileSync(join(src, 'config.xml'), 'utf8').match(/<widget[^>]*\sversion="([^"]+)"/) || [])[1] || '0';
+const out = join(dist, fonttest ? 'settle-fonttest.wgt' : pub ? 'Settle-' + version + '.wgt' : 'settle.wgt');
 writeFileSync(out, Buffer.concat([...parts, cd, end]));
 
 const js = names.filter((n) => n.endsWith('.js')).reduce((s, n) => s + files.get(n).length, 0);
@@ -119,6 +141,7 @@ const js = names.filter((n) => n.endsWith('.js')).reduce((s, n) => s + files.get
 const bootNames = fonttest ? [] : [...files.get('index.html').toString('utf8').matchAll(/<script src="([^"]+)"/g)].map((m) => m[1]).filter((n) => files.has(n));
 const bootJs = bootNames.reduce((s, n) => s + files.get(n).length, 0);
 console.log(`${relative(root, out)}  ${(statSync(out).size / 1024).toFixed(0)} KB, ${names.length} files, JS ${(bootJs / 1024).toFixed(1)} KB at start + ${((js - bootJs) / 1024).toFixed(1)} KB on demand${rawJs && rawJs !== js ? ' (source ' + (rawJs / 1024).toFixed(1) + ' KB)' : ''}, CSS ${(minCss / 1024).toFixed(1)} KB (source ${(rawCss / 1024).toFixed(1)} KB)`);
-if (!fonttest && files.get('js/config.local.js').toString().includes('keys')) {
+if (pub) console.log('Public build: no keys inside. Apps2Samsung writes each user\'s own into it on install (packaging/apps2samsung).');
+else if (!fonttest && files.get('js/config.local.js').toString().includes('keys')) {
   console.log('NOTE: this package contains the API keys from js/config.local.js. Keep the .wgt private.');
 }

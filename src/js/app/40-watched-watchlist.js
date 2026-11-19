@@ -152,8 +152,10 @@ function rebuildRows() {
     films.concat(shows).forEach(function (r) { if (!t && wl[r.id]) r.wl = true; });
     var tonight = films.filter(function (r) { return !r.wl && !r.connect; });
     var watch = films.concat(shows).filter(function (r) { return r.wl && !r.connect; });
-    if (window.Trakt && window.Trakt.enabled && !t) tonight = [CONNECT].concat(tonight);
-    rows[0].list = tonight; rows[1].list = watch; rows[2].list = shows.filter(function (r) { return !r.wl; });
+    if (window.Trakt && window.Trakt.enabled && !t && navigator.onLine !== false) tonight = [CONNECT].concat(tonight);   // pairing needs the internet
+    var going = {}; upNext.forEach(function (u) { going[u.tmdb] = 1; });                // a show you're watching isn't suggested again
+    rows[0].list = tonight; rows[1].list = watch; rows[2].list = shows.filter(function (r) { return !r.wl && !going[r.tmdb]; });
+    rows[3].list = upNext.slice();
     rows.forEach(function (R, k) { R.ri = 0; buildRow(k); R.track.style.transform = ''; });
     S.row = rowsShown()[0] || 0;
     recs = rows[S.row].list; pCells = rows[S.row].cells; track = rows[S.row].track; S.ri = 0; heroId = null;
@@ -170,6 +172,20 @@ function setRecs(list, now) {
     }
     if (S.zone === 'rail' || S.zone === 'act') pendingRecs = list; else applyRecs(list);
 }
+/* No internet: say so once, keep whatever rows are saved, and drop the Connect Trakt card (it can't work offline).
+   Back online: put the card back, and if the rows are empty, ask for them again. Events only; nothing polls. */
+function onNet() {
+    var off = navigator.onLine === false;
+    stage.classList.toggle('offline', off);
+    if (off) toast(rowsShown().length ? 'No internet connection. Showing what’s saved.' : 'No internet connection.');
+    if (S.zone !== 'rail' && S.zone !== 'act' && S.zone !== 'dt') rebuildRows();
+    railEmpty();
+    if (!off && !rowsShown().length && window.Recs && window.Recs.refreshNow) window.Recs.refreshNow().catch(function () { /* the message stays */ });
+}
+window.addEventListener('offline', onNet);
+window.addEventListener('online', onNet);
+if (navigator.onLine === false) stage.classList.add('offline');
+
 (window.onRest = window.onRest || []).push(function () { if (pendingRecs) { var l = pendingRecs; pendingRecs = null; applyRecs(l); } });
 // The same for the TV shows row.
 function setShows(list, now) {

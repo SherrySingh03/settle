@@ -15,3 +15,7 @@ Trademarks belong to their owners; used here only to identify apps.
 
 Rotten Tomatoes tomato (rottentomatoes.svg): Simple Icons 13.21.0 (CC0), filled with its brand red #FA320A. Shown beside the
 Rotten Tomatoes score only, to say where the score comes from.
+
+Stremio, Apple Music and Samsung Internet (stremio.svg, applemusic.svg, samsunginternet.svg): homarr-labs/dashboard-icons (svg/),
+https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/{stremio,apple-music,samsung-internet}.svg, unchanged. They replace the TV's
+own icons for those apps (brands.js `always`). Trademarks belong to their owners; used here only to identify apps.

@@ -34,6 +34,7 @@ function sheetPaint() {
         if (on && ids.length > 1) shOpts.push({ t: 'Remove from dock', k: 'remove' });
         shOpts.push({ t: 'Hide from All apps', k: 'hide' });
         shOpts.push({ t: 'App info', k: 'info' });
+        if (window.Vetro) shOpts.push({ t: profileOf(shIt.id) ? 'App profile (set)…' : 'App profile…', k: 'profile' });
         if (window.Vetro && window.Vetro.uninstall && P.canUninstall(shIt.id)) shOpts.push({ t: 'Uninstall…', k: 'uninstall' });
         if (P.hiddenCount() > 0) shOpts.push({ t: 'Show hidden apps (' + P.hiddenCount() + ')', k: 'unhide' });
         if (P.hasSavedDock()) shOpts.push({ t: 'Reset the dock to the default apps', k: 'reset' });
@@ -95,6 +96,7 @@ function sheetKey(d) {
         if (o.k === 'line') return;
         if (o.k === 'open') { P.launch(shIt.id); return closeSheet(); }
         if (o.k === 'info') { shMode = 'info'; shSel = 0; return sheetPaint(); }
+        if (o.k === 'profile') { var pit = shIt; closeSheet(); return openProfile(pit); }
         if (o.k === 'uninstall') { shMode = 'confirm'; shSel = 1; return sheetPaint(); }      // Cancel is focused first
         if (o.k === 'unok') { var it = shIt; closeSheet(); return uninstallApp(it); }
         if (o.k === 'hide') { P.hideApp(shIt.id); closeSheet(); rebuildApps(); return toast('Hidden from All apps.'); }
@@ -138,5 +140,4 @@ function applyDock() {                                          // (re)build the
     dockItems = mockIcons(P.layout(C));
     if (window.Icons && P.source() === 'live') window.Icons.prune(P.installedIds());     // only a real list may drop cached icons
     buildDock();
-    if (window.AppInfo) window.AppInfo.refresh(dockItems.map(function (x) { return x.label; }));
 }

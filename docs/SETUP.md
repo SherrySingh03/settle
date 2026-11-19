@@ -28,6 +28,7 @@ This guide takes you from a fresh clone to Settle running on your TV, with the H
 | Trakt client id | personal picks, watchlist, Watched, Not interested | <https://trakt.tv/oauth/applications>: create an app, Redirect URI `urn:ietf:wg:oauth:2.0:oob` |
 | OMDb API key | IMDb ratings | <https://www.omdbapi.com/apikey.aspx> (click the activation link in their email first) |
 | Unsplash access key | a new wallpaper every day | <https://unsplash.com/developers> |
+| YouTube Data API v3 key | "Trending on YouTube" above the dock (without it: trailers for films trending this week) | <https://console.cloud.google.com/apis/library/youtube.googleapis.com> |
 
 - **Optional: [Vetro](https://github.com/andrearicci93/vetro)** on the TV, for the Home button, the Control Center
   and the free-memory figure in the app switcher. Vetro needs root on the TV; see [section 6](#6-optional-vetro-home-button-control-center).
@@ -104,6 +105,26 @@ tips.
 Settle asks the TV for these permissions (in `src/config.xml`): launch apps, read the installed-app list, watch
 for apps being installed, close apps (the app switcher), register remote buttons, the TV window (HDMI sources),
 and the internet.
+
+### Installing from the Apps2Samsung catalogue
+
+With Settle in the Apps2Samsung catalogue there is nothing to build: the release package carries no keys, and
+Apps2Samsung writes yours into it before installing.
+
+1. In Apps2Samsung, open the catalogue, find **Settle** under **Home**, and choose **Install**.
+2. A form asks for your **country** (a 2-letter code such as `US`, `GB` or `IN`, for where-to-watch and popular
+   titles) and the optional keys in the table in [section 1](#1-what-you-need). Leave any of them empty: that feature
+   simply stays off. Apps2Samsung remembers your answers and fills them in again on updates.
+3. Two optional fields only matter with Vetro and trailers:
+   - **Your TV's own IP address**: only if the Control Center says Vetro can't be reached (some 2025 TVs refuse apps
+     that call Vetro on `127.0.0.1`).
+   - **YouTube screen id**, for trailers in the YouTube app: from a computer on the same network, run
+     `curl -H "Origin: https://www.youtube.com" http://<tv-ip>:8080/ws/apps/YouTube` and copy the value between
+     `<screenId>` and `</screenId>`. It stays the same across restarts.
+4. Settle is signed with your **Partner** certificate, which Apps2Samsung creates the first time.
+
+The form and the file it fills in are in [`packaging/apps2samsung/`](../packaging/apps2samsung/). A release package
+is built with `npm run build:public`, which stops if anything from your own `config.local.js` would end up in it.
 
 ## 6. Optional: Vetro (Home button, Control Center)
 

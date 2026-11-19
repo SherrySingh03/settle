@@ -12,7 +12,7 @@ function dockKey(d) {
     else if (d === 'R') { if (S.di < n - 1) S.di++; else bump(dCells[S.di], 1, 0); }
     else if (d === 'D') { var first = rowsShown()[0]; if (first != null) { useRow(first); S.zone = 'rail'; } }
     else if (d === 'U' && S.di === n - 1) { S.zone = 'home'; }          // the rightmost tile sits under the Samsung Home button
-    else if (d === 'U') { S.zone = 'full'; clearTimeout(idleT); }      // full-screen wallpaper + centred clock
+    else if (d === 'U') { S.zone = 'full'; clearTimeout(idleT); learnHint('full'); }      // full-screen wallpaper + centred clock
     else if (d === 'B') { S.zone = null; }
     else if (d === 'OK') {
         var it = dockItems[S.di];
@@ -68,7 +68,7 @@ function actKey(d) {
         var b = bs[S.ai];
         if (b === a1) { openItem(); return; }
         if (b === a5) { openDetails(recs[S.ri], 'act'); return; }
-        if (b === a3) { openRate(); return; }
+        if (b === a3) { if (recs[S.ri] && recs[S.ri].next) markNext(recs[S.ri]); else openRate(); return; }
         if (b === a4) { notInterested(); return; }
         toggleWatchlist();
     }

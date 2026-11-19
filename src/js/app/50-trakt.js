@@ -27,6 +27,7 @@ function openTrakt() {
             S.zone = 'dock'; armIdle();
             toast('Trakt connected. Loading your picks…');
             if (window.Recs) window.Recs.refresh(true);           // rebuild the rail from Trakt's picks
+            setTimeout(unRefresh, 500);                           // and Up next from what you've watched
             if (window.Recs) { var c = window.Recs.cached(); if (!c) applyRecs(lastFilms.filter(function (r) { return !r.connect; })); }
             paint();
         }

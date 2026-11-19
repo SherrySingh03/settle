@@ -5,6 +5,7 @@ var wxText = '', wxShort = '', wxKind = 'moon';
 
 function setWeather(long, short, kind) {
     wxText = long; wxShort = short; wxKind = kind || wxKind;
+    stage.classList.toggle('no-wx', !long);                         // no reading yet: no lone icon or separator dot
     var ic = WX_ICONS[wxKind];
     $('wx-rest').children[0].innerHTML = ic;
     $('wx-rest').children[1].textContent = long;

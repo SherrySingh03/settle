@@ -209,5 +209,5 @@
         } catch (e) { /* silent */ }
     }
 
-    window.Icons = { get: get, prune: prune, size: SIZE, status: status, tried: tried, generic: function () { return (read(GKEY) || []).length; } };
+    window.Icons = { get: get, prune: prune, status: status, tried: tried };
 })();

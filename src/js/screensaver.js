@@ -113,7 +113,7 @@
     window.addEventListener('load', schedule);
 
     window.Screensaver = {
-        timeoutMs: timeoutMs, setTimeoutMs: setTimeoutMs,
+        setTimeoutMs: setTimeoutMs,
         status: function () { return { app: appId(), off: off, ms: timeoutMs(), known: listKnown(), dueIn: dueAt && !off ? Math.round((dueAt - Date.now()) / 1000) : null, log: log.slice() }; }
     };
 })();

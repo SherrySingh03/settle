@@ -211,7 +211,7 @@
     function controls() {
         return [
             { id: 'sleep', label: 'Sleep', kind: 'action', confirm: 'Press OK again to sleep' },
-            { id: 'perf', label: 'Performance mode', kind: 'run' },
+            { id: 'perf', label: 'Performance', kind: 'run' },
             { id: 'picture', label: 'Picture', kind: 'page' },
             { id: 'sound', label: 'Sound mode', kind: 'page' },
             { id: 'output', label: 'Audio output', kind: 'choice' },
@@ -248,7 +248,7 @@
     function rowView(id, st) {                 // { value: text, current } for one setting
         var d = ROWS[id], fromTv = st && st.v && st.v[id] != null, v = fromTv ? st.v[id] : assumed[id];
         if (fromTv && d.map) v = d.map(v);
-        if (v == null) return { value: offline() || '—', current: null };
+        if (v == null) return { value: offline() || '', current: null };
         if (d.kind === 'slider') return { value: d.text ? d.text(v) : String(v), current: v };
         if (id === 'p.mode' && v === AI_PICTURE) return { value: 'AI optimised', current: String(v) };     // seen in the captures with AI mode on
         var hit = d.list().filter(function (m) { return m[0] === v; })[0];
@@ -264,11 +264,11 @@
         m.sound = { value: m['s.mode'].value, current: m['s.mode'].current };
         var aud = st && st.btKnown ? (st.btMac || 'tv') : assumed.audio;
         var dev = aud && aud !== 'tv' ? devices().filter(function (d) { return d.mac.toUpperCase() === String(aud).toUpperCase(); })[0] : null;
-        m.output = { value: !aud ? (offline() || '—') : (aud === 'tv' ? 'TV speakers' : (dev ? dev.name : 'Bluetooth speaker')), current: aud || null };
+        m.output = { value: !aud ? (offline() || '') : (aud === 'tv' ? 'TV speakers' : (dev ? dev.name : 'Bluetooth speaker')), current: aud || null };
         var ci = currentInput() || (assumed.input != null ? options('input').filter(function (o) { return o.id === String(assumed.input); })[0] : null);
-        m.input = { value: ci ? ci.label : '—', current: ci ? ci.id : null };
+        m.input = { value: ci ? ci.label : '', current: ci ? ci.id : null };
         m.bluetooth = { value: 'Find devices', current: null };
-        m.perf = { value: st && st.gov ? (st.gov === 'performance' ? 'On · CPU at full speed' : 'Off') : (offline() || '—'), current: st && st.gov || null };
+        m.perf = { value: st && st.gov ? (st.gov === 'performance' ? 'On · CPU at full speed' : 'Off') : (offline() || 'Not available'), current: st && st.gov || null };
         return m;
     }
 
@@ -354,6 +354,23 @@
             if (r && !r.sent && now !== g) throw new Error('the TV kept ' + (now || 'its setting'));
             return on ? 'on' : 'off';
         });
+    }
+    /* Sleep timer: a detached shell on the TV waits, then sends the same power-off key as Sleep. Tested on the QN70F: a
+       process started this way keeps running after /exec returns (a 40 s test fired on time). Cancelling kills that
+       shell before it gets there. Returns the shell's pid. */
+    function sleepIn(minutes) {
+        var s = Math.round(minutes * 60);
+        if (!(s >= 60 && s <= 4 * 3600)) return Promise.reject(new Error('1 minute to 4 hours'));
+        return exec('(sleep ' + s + '; /usr/bin/input_keyevent XF86PowerOff) > /dev/null 2>&1 < /dev/null & echo PID $!', true).then(function (r) {
+            trace('sleepIn', s + ' s', r);
+            var m = /PID (\d+)/.exec(String((r && r.output) || ''));
+            if (!m) throw new Error('The TV did not start the timer');
+            return +m[1];
+        });
+    }
+    function cancelSleep(pid) {
+        if (!/^\d+$/.test(String(pid))) return Promise.reject(new Error('bad pid'));
+        return exec('kill ' + pid + ' 2>/dev/null; true', true).then(function () {});
     }
     function perfState() {
         return exec('cat /sys/devices/system/cpu/cpufreq/policy0/scaling_governor 2>&1', true).then(function (r) {
@@ -505,7 +522,7 @@
         },
         // YouTube's cast screen id, from the TV's DIAL service (GET :8080/ws/apps/YouTube -> <screenId>), read on the TV
         // itself: a web app's own request is refused there. Only answers while YouTube is running. curl, else busybox wget.
-        perf: perf, perfState: perfState,
+        perf: perf, perfState: perfState, sleepIn: sleepIn, cancelSleep: cancelSleep,
         youtubeScreen: function () {
             var u = 'http://127.0.0.1:8080/ws/apps/YouTube', o = 'Origin: https://www.youtube.com';
             return exec("(curl -s -m 3 -H '" + o + "' " + u + " || wget -q -T 3 -O - --header='" + o + "' " + u + ") 2>&1", true).then(function (r) {

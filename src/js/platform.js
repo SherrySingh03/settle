@@ -46,7 +46,8 @@
     var STORE_ID = /^[A-Za-z0-9]{10}\.[A-Za-z0-9_-]+$/, NUMERIC_ID = /^\d{9,13}$/, MOCK_ID = /^mock\./;
     var PRELOADED = ['org.tizen.netflix-app', 'org.tizen.primevideo', 'org.tizen.apple.apple-music', 'org.tizen.browser', 'com.samsung.tv.aria-video'];
     var GUESS = [[/youtube|tizentube/i, 'youtube'], [/netflix/i, 'netflix'], [/prime ?video/i, 'primevideo'], [/spotify/i, 'spotify'],
-                 [/plex/i, 'plex'], [/xbox/i, 'xbox'], [/disney/i, 'disneyplus'], [/apple ?tv|aria-video/i, 'appletv']];
+                 [/plex/i, 'plex'], [/xbox/i, 'xbox'], [/disney/i, 'disneyplus'], [/apple ?tv|aria-video/i, 'appletv'],
+                 [/stremio/i, 'stremio'], [/apple ?music|apple-music/i, 'applemusic'], [/ org\.tizen\.browser$/, 'samsunginternet']];
 
     // System/internal entries that carry store-style ids but are not apps a person opens.
     var INTERNAL = ['adplatform.ADPlayer', 'WykOS4t4F0.cmsWebApp', '25emanual3.emanual', 'ZODRT12q2l.WebAccountExtension', 'ByJlgt0XeD.CastSettingsApp',
@@ -72,7 +73,8 @@
         entry = entry || entryFor(a, cfg) || {};
         var label = entry.label || shortName(a.name), brand = entry.brand;
         if (!brand) GUESS.some(function (g) { if (g[0].test(a.name + ' ' + a.id)) { brand = g[1]; return true; } });
-        var brandFirst = entry.useBrand === true && brand && window.BRANDS && window.BRANDS[brand];       // the bundled dark logo wins over the TV's icon
+        var B = brand && window.BRANDS && window.BRANDS[brand];
+        var brandFirst = (entry.useBrand === true || (B && B.always === true)) && B;                    // the bundled logo wins over the TV's icon
         var own = entry.chip === true || !!brandFirst;                                  // config: this app has no real icon, show its name
         return {
             id: a.id, pkg: (own || entry.logo) ? '' : (a.packageId || ''), label: label, tone: entry.tone, brand: brand, brandFirst: !!brandFirst,
@@ -219,6 +221,8 @@
             raw = cfg.apps.map(function (a) { return { id: a.id || ('mock.' + a.label), name: a.label, packageId: '', iconPath: '', show: true }; })
                 .concat(((window.MOCK && window.MOCK.apps) || []).map(function (n) { return { id: 'mock.' + n, name: n, packageId: '', iconPath: '', show: true }; }))
                 .concat(((window.MOCK && window.MOCK.hidden) || []).map(function (id) { return { id: id, name: id, packageId: '', iconPath: '', show: true }; }));
+            // Preview only: MOCK.tvApps ([{ id, name }], e.g. read from a TV) stands in for the TV's own list, to rebuild its exact state
+            if (window.MOCK && window.MOCK.tvApps) raw = window.MOCK.tvApps.map(function (a) { return { id: a.id, name: a.name, packageId: '', iconPath: '', show: true }; });
             if (window.MOCK && window.MOCK.appsFail) return mockFailing(cfg);
             src = 'live'; buildCatalog(cfg);
             return Promise.resolve(layout(cfg));
@@ -290,20 +294,14 @@
     /* ---------- launching ---------- */
 
     // onFail(error) when the TV refuses; the failure is also recorded with its name and message.
-    // Apps opened from Settle, most recent first: the app switcher's order.
-    var RECENT_KEY = 'settle.recent.v1';
-    function recent() { try { var l = JSON.parse(localStorage.getItem(RECENT_KEY)); return Array.isArray(l) ? l : []; } catch (e) { return []; } }
+    // When each app was opened from Settle (the app switcher's order and its "opened 12 min ago").
     function noteLaunch(id) {
-        var l = recent().filter(function (x) { return x !== id; });
-        l.unshift(id);
-        try { localStorage.setItem(RECENT_KEY, JSON.stringify(l.slice(0, 30))); } catch (e) { /* silent */ }
         var t = launchTimes(), ks;
         t[id] = Date.now();
         ks = Object.keys(t);
         if (ks.length > 30) ks.sort(function (a, b) { return t[a] - t[b]; }).slice(0, ks.length - 30).forEach(function (k) { delete t[k]; });
         try { localStorage.setItem(TIMES_KEY, JSON.stringify(t)); } catch (e) { /* silent */ }
     }
-    // When each app was last opened from Settle (the switcher's "opened 12 min ago").
     var TIMES_KEY = 'settle.launchedat.v1';
     function launchTimes() { try { var m = JSON.parse(localStorage.getItem(TIMES_KEY)); return m && typeof m === 'object' ? m : {}; } catch (e) { return {}; } }
 
@@ -431,23 +429,22 @@
     function ready() { return readyP || Promise.resolve(); }
 
     window.Platform = {
-        hasTizen: HAS, apps: apps, ready: ready, isInstalled: isInstalled, launch: launch, launchProvider: launchProvider,
+        apps: apps, ready: ready, isInstalled: isInstalled, launch: launch, launchProvider: launchProvider,
         launchDeep: launchDeep, providerApp: providerApp,
         // Never offered for uninstalling: Settle itself and Vetro (Settle depends on both). The TV refuses its own apps.
         canUninstall: function (id) {
             var a = raw.filter(function (x) { return x.id === id; })[0];
             return !!a && (!HAS || !!a.packageId) && a.id !== selfId() && !/vetro/i.test(a.id + ' ' + (a.name || '')) && !/^SettleTv01\./.test(a.id);
-        }, appById: function (id) { return catalog.filter(function (a) { return a.id === id; })[0] || null; },
+        },
         sources: sources, openSource: openSource, exit: exit,
         // dock editing
-        allApps: function () { return catalog.slice(); },
         allInstalled: allInstalled, appStats: function () { return lastStats; },
         hideApp: hideApp, unhideAll: unhideAll, appInfo: appInfo, hiddenCount: function () { return Object.keys(hiddenIds()).length; },
         installedIds: function () { return raw.map(function (a) { return a.id; }); },
         source: function () { return src; }, refresh: refresh,
         findApp: function (re) { var a = raw.filter(function (x) { return re.test(x.id) || re.test(x.name || ''); })[0]; return a ? { id: a.id, name: a.name } : null; }, errors: function () { return errs.slice(); }, launchFirst: launchFirst,                                // 'live' | 'cache' | 'none' (favourites shown)
         dockIds: function () { return dockIds.slice(); },
-        running: running, kill: kill, recent: recent, tryLaunch: tryLaunch, launchedAt: function (id) { return launchTimes()[id] || 0; },
+        running: running, kill: kill, tryLaunch: tryLaunch, launchedAt: function (id) { return launchTimes()[id] || 0; },
         note: function (kind, id, msg) { note(kind, id, { name: 'Note', message: msg }); },
         layout: layout, setDock: setDock, hasSavedDock: function () { return !!savedDock(); }, maxApps: MAX_APPS
     };

@@ -127,5 +127,5 @@
         setTimeout(function () { window.Settle.toast(m); }, 600);
     });
 
-    window.YouTubeCast = { play: play, forget: function () { saveScreen(''); } };
+    window.YouTubeCast = { play: play };
 })();

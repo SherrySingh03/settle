@@ -97,6 +97,7 @@ function renderHero() {
         a3.style.display = r.connect ? 'none' : '';
         a4.style.display = r.connect ? 'none' : '';
         a5.style.display = r.connect ? 'none' : '';
+        a3.lastChild.textContent = r.next ? 'Mark ' + r.next.code + ' watched' : 'Mark as watched';
     }
     a2.children[0].style.display = r.wl ? 'none' : '';
     a2.children[1].style.display = r.wl ? '' : 'none';
@@ -105,10 +106,25 @@ function renderHero() {
     heroId = r.id; heroWl = r.wl;
 }
 
-/* "Popular on <app>" above the dock, for the focused app */
+/* Above the dock, for the focused app: something of yours on that app first (the next episode of a show you're
+   watching, then a watchlist title), else "Popular on <app>" (for YouTube: trending videos or trailers, appinfo.js). */
+function normName(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+function sameApp(provider, label) {
+    var a = normName(provider), b = normName(label);
+    return !!a && !!b && (a === b || a.indexOf(b) >= 0 || b.indexOf(a) >= 0);
+}
+function personalPeek(label) {
+    var lists = [[typeof upNext !== 'undefined' ? upNext : [], 'Up next on '], [rows[1].list, 'On your watchlist · ']];
+    for (var i = 0; i < lists.length; i++) {
+        var hit = lists[i][0].filter(function (r) { return r && r.streaming && sameApp(r.provider, label); })[0];
+        if (hit) return { label: lists[i][1] + label, title: hit.title, sub: hit.next ? hit.next.code + ' · ' + hit.next.title : hit.meta };
+    }
+    return null;
+}
 var infoKey = '';
 function renderInfo() {
-    var el = $('appinfo'), it = S.zone === 'dock' ? dockItems[S.di] : null, d = it && window.AppInfo && window.AppInfo.get(it.label);
+    var el = $('appinfo'), it = S.zone === 'dock' ? dockItems[S.di] : null;
+    var d = it && (personalPeek(it.label) || (window.AppInfo && window.AppInfo.get(it.label)));
     if (!d) { el.classList.remove('has'); infoKey = ''; return; }
     if (infoKey !== it.label + d.title) {
         infoKey = it.label + d.title;

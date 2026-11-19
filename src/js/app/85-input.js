@@ -74,11 +74,6 @@ function ccToggle() {
     if (S.zone === 'cc') return closeCC();
     if (['trk', 'diag', 'sheet', 'move', 'src', 'rate', 'sw', 'dt', 'srch', 'ask'].indexOf(S.zone) < 0) openCC();
 }
-function diagToggle() {
-    if (S.zone === 'diag') { $('diag').classList.remove('open'); S.zone = 'dock'; armIdle(); paint(); return; }
-    if (['trk', 'src', 'apps', 'sheet', 'move', 'cc'].indexOf(S.zone) >= 0) return;
-    openDiag();
-}
 // Diagnostics (Yellow, or a double Play/Pause): diag.js is loaded the first time it is opened.
 function openDiag() {
     if (!window.Diag) { need(['js/diag.js'], function () { if (window.Diag && S.zone !== 'diag') openDiag(); }); return; }

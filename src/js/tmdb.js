@@ -12,7 +12,9 @@
     'use strict';
 
     var C = window.LAUNCHER_CONFIG, KEY = (C.keys || {}).tmdb, REG = C.region || 'IN';
-    var CK = 'settle.recs.v3', AWAY = 30 * 60 * 1000, N = 12, hiddenAt = 0;
+    // AWAY: back after this long, the rows are drawn afresh (a new page of picks). Each refresh is ~50 TMDB calls and a new
+    // set of posters, so it is hours, not the 30 minutes it once was; a new day and Control Center > Refresh still renew them.
+    var CK = 'settle.recs.v3', AWAY = 6 * 3600 * 1000, N = 12, hiddenAt = 0;
     function today() { var d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }   // the cache is keyed by local date
     var API = 'https://api.themoviedb.org/3', IMG = 'https://image.tmdb.org/t/p/w185';
     var SHORT = { 'Amazon Prime Video': 'Prime Video', 'Amazon Video': 'Prime Video', 'Disney Plus Hotstar': 'JioHotstar', 'Hotstar': 'JioHotstar', 'Sony Liv': 'SonyLIV', 'Sonyliv': 'SonyLIV', 'Apple TV Plus': 'Apple TV', 'Apple TV+': 'Apple TV' };
@@ -350,17 +352,24 @@
     /* TV shows rail: shows streaming on the apps you have first (TMDB discover/tv with your providers), popular shows to
        fill, then ranked like the films (on your apps, included > rent > elsewhere). Your Trakt show watchlist joins the
        Watchlist row. Once a day, cached whole; one call per show (tv/{id} with providers, rating and IMDb id). */
-    var SK = 'settle.shows.v1', SPK = 'settle.showpage.v1';
+    var SK = 'settle.shows.v2', SPK = 'settle.showpage.v1';
     function showDetail(id) {
         return get('/tv/' + id, 'append_to_response=watch/providers,content_ratings,external_ids&language=en-US')
             .then(function (d) { return toItem(d, 'tv'); }).catch(function () { return null; });
     }
+    // Kids, News, Reality, Soap and Talk are left out of the TV shows row unless config.shows.skipGenres says otherwise.
+    var SKIP_TV = ((C.shows && C.shows.skipGenres) || [10762, 10763, 10764, 10766, 10767]).map(Number);
     function discoverTv(page, prov) {
         var since = new Date(Date.now() - 3 * 365 * 86400000).toISOString().slice(0, 10);     // on air in the last ~3 years
         return get('/discover/tv', 'watch_region=' + REG + '&with_watch_monetization_types=flatrate' +
             (prov && prov.length ? '&with_watch_providers=' + prov.join('|') : '') +
-            '&sort_by=popularity.desc&vote_count.gte=100&air_date.gte=' + since + '&include_adult=false&language=en-US&page=' + (page || 1))
-            .then(function (j) { return (j.results || []).filter(function (m) { return m.poster_path; }).slice(0, 20).map(function (m) { return m.id; }); });
+            '&sort_by=popularity.desc&vote_count.gte=100&air_date.gte=' + since + '&include_adult=false&language=en-US&page=' + (page || 1) +
+            (SKIP_TV.length ? '&without_genres=' + SKIP_TV.join('|') : ''))
+            .then(function (j) {
+                return (j.results || []).filter(function (m) {
+                    return m.poster_path && !(m.genre_ids || []).some(function (g) { return SKIP_TV.indexOf(g) >= 0; });
+                }).slice(0, 20).map(function (m) { return m.id; });
+            });
     }
     function cachedShows() { var c = load(SK); return c && c.region === REG && c.src === source() && c.items && c.items.length ? c.items : null; }
     function refreshShows(force, manual) {
@@ -395,16 +404,35 @@
 
     // Films and shows matching a search (TMDB search/multi), as picks for the details popup; people and anything without
     // a poster are left out.
+    function pickOf(m, type) {
+        return { tmdb: m.id, type: type || m.media_type, title: m.title || m.name, art: IMG + m.poster_path, year: (m.release_date || m.first_air_date || '').slice(0, 4) };
+    }
+    // Titles that start with what you typed come first, then titles that contain it, then the rest (TMDB also matches
+    // overviews and people), each group by popularity. Little-known titles without the words in their name are dropped.
     function search(q) {
         if (!KEY) return Promise.resolve([]);
+        var ql = q.toLowerCase();
         return get('/search/multi', 'query=' + encodeURIComponent(q) + '&include_adult=false&language=en-US&page=1').then(function (j) {
-            return (j.results || []).filter(function (m) { return (m.media_type === 'movie' || m.media_type === 'tv') && m.poster_path; }).slice(0, 18).map(function (m) {
-                return { tmdb: m.id, type: m.media_type, title: m.title || m.name, art: IMG + m.poster_path, year: (m.release_date || m.first_air_date || '').slice(0, 4) };
-            });
+            return (j.results || []).filter(function (m) { return (m.media_type === 'movie' || m.media_type === 'tv') && m.poster_path; }).map(function (m) {
+                var names = [m.title, m.name, m.original_title, m.original_name].filter(Boolean).map(function (s) { return s.toLowerCase(); });
+                var rank = names.some(function (n) { return n.indexOf(ql) === 0; }) ? 0 : names.some(function (n) { return n.indexOf(ql) >= 0; }) ? 1 : 2;
+                return { m: m, rank: rank };
+            }).filter(function (x) { return x.rank < 2 || (x.m.vote_count || 0) >= 200; })
+              .sort(function (a, b) { return a.rank - b.rank || (b.m.popularity || 0) - (a.m.popularity || 0); })
+              .slice(0, 18).map(function (x) { return pickOf(x.m); });
         }).catch(function () { return []; });
     }
+    // What's trending this week (films and shows), for Search before you type. Asked once per session.
+    var trendP = null;
+    function trending() {
+        if (!KEY) return Promise.resolve([]);
+        if (!trendP) trendP = get('/trending/all/week', 'language=en-US').then(function (j) {
+            return (j.results || []).filter(function (m) { return (m.media_type === 'movie' || m.media_type === 'tv') && m.poster_path; }).slice(0, 16).map(function (m) { return pickOf(m); });
+        }).catch(function () { trendP = null; return []; });
+        return trendP;
+    }
 
-    window.Recs = { search: search, shows: cachedShows, refreshShows: refreshShows, imdb: imdb, details: details, item: item, dismiss: dismiss, forget: forget, addWatched: addWatched, short: short, cached: cached, refresh: refresh, refreshNow: function () { refreshShows(true, true); return refresh(true, true); }, setWl: setWl, hasKey: !!KEY };
+    window.Recs = { search: search, trending: trending, shows: cachedShows, imdb: imdb, details: details, item: item, dismiss: dismiss, forget: forget, addWatched: addWatched, short: short, cached: cached, refresh: refresh, refreshNow: function () { refreshShows(true, true); return refresh(true, true); }, setWl: setWl, hasKey: !!KEY };
     window.addEventListener('load', function () { refresh(); refreshShows(); });
     // Back from another app: refresh if the day changed, or if we were away long enough that picks may have moved.
     document.addEventListener('visibilitychange', function () { if (document.hidden) hiddenAt = Date.now(); });

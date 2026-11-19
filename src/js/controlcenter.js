@@ -31,12 +31,10 @@
         output: ['M4 9.5h3.5L12 6v12l-4.5-3.5H4z', 'M15.5 9a4.2 4.2 0 0 1 0 6', 'M18 6.5a8 8 0 0 1 0 11'],
         input: ['M4 6h16v7l-3 5H7l-3-5z'],
         ai: ['M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z', 'M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z'],
-        screensaver: ['M4 18l5-7 4 4 3-3 4 6', 'M15.5 7.5a1.5 1.5 0 1 0 3 0 1.5 1.5 0 1 0-3 0', 'M3.5 4.5h17v15h-17z'],
+        settle: ['M3 17.5h18', 'M7.5 17.5a4.5 4.5 0 0 1 9 0', 'M12 6v2.2', 'M5.3 9.3l1.5 1.5', 'M18.7 9.3l-1.5 1.5'],
         recent: ['M4 7.5h11v11H4z', 'M8 4.5h12v11'],
         perf: ['M13 2.5 4.5 13.5h6.5l-1 8 8.5-11h-6.5z'],
         bluetooth: ['M7 7.5l10 9-5 4.5V3l5 4.5-10 9'],
-        wallpaper: ['M3.5 5.5h17v13h-17z', 'M3.5 15.5l5-5 4 4 2.5-2.5 5 5', 'M15.5 9.2h.01'],
-        recs: ['M19.5 12a7.5 7.5 0 1 1-2.2-5.3', 'M19.5 4.5v4.2h-4.2'],
         brightness: ['M8.5 12a3.5 3.5 0 1 0 7 0 3.5 3.5 0 1 0-7 0', 'M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M5.6 18.4l1.6-1.6M16.8 7.2l1.6-1.6']
     };
 
@@ -57,6 +55,7 @@
     function restart(node, cls) { node.classList.remove(cls); void node.offsetWidth; node.classList.add(cls); }   // replay a CSS animation
 
     // Which tile each direction leads to. Brightness returns to whichever of Output / Input was last used.
+    // TV controls first; the last tile, Settle, opens the launcher's own options (screensaver, wallpaper, refresh, diagnostics).
     var NAV = {
         sleep: { R: 'picture', D: 'perf' },
         perf: { U: 'sleep', R: 'sound', D: 'output' },
@@ -65,11 +64,9 @@
         output: { U: 'perf', R: 'input', D: 'recent' },
         input: { L: 'output', U: 'sound', D: 'bluetooth' },
         recent: { U: 'output', R: 'bluetooth', D: 'brightness' },
-        bluetooth: { U: 'input', L: 'recent', D: 'screensaver' },
-        brightness: { U: 'recent', D: 'wallpaper', R: 'screensaver' },
-        screensaver: { U: 'bluetooth', L: 'brightness', D: 'recs' },
-        wallpaper: { U: 'brightness', R: 'recs' },
-        recs: { U: 'screensaver', L: 'wallpaper' }
+        bluetooth: { U: 'input', L: 'recent', D: 'settle' },
+        brightness: { U: 'recent', R: 'settle' },
+        settle: { U: 'bluetooth', L: 'brightness' }
     };
 
     function create(host, adapter, hooks) {
@@ -80,7 +77,15 @@
         var pg = null, list = null, armed = null, armT = 0, noteT = 0, slide = null, slideT = 0, closeT = 0, busy = false;
         var panel, body;
 
-        function val(id) { return notes[id] || (st[id] && st[id].value) || '—'; }
+        // Before the first read: "Checking…". After it, a missing value says so plainly instead of showing a bare dash.
+        var readDone = false;
+        function val(id) {
+            var v = notes[id] || (st[id] && st[id].value);
+            if (v) return v;
+            if (!readDone) return 'Checking…';
+            var c = byId[id] || {};
+            return c.kind === 'choice' ? 'Choose' : c.kind === 'run' || c.kind === 'page' ? '' : 'Not available';
+        }
 
         /* A value that changes crossfades; "Working…" pulses. */
         function paintValue(node, id) {
@@ -148,6 +153,7 @@
 
         function refresh() {
             return adapter.read().then(function (s) {
+                readDone = true;
                 if (!isOpen) return;
                 st = s;
                 if (view === 'grid') paintGrid(); else if (view === 'page') paintPage();
@@ -278,6 +284,7 @@
             else if (k === 'OK' && !busy) {
                 if (r.kind === 'choice') { commitSlide(); buildList(r.id, r.label, 'page', 1); return; }
                 if (r.kind === 'toggle') { var cur = st[r.id] && st[r.id].current; run(r.id, cur === '1' ? 0 : 1); return; }
+                if (r.kind === 'run') { run(r.id); return; }
             }
             paintPage();
         }
@@ -342,7 +349,7 @@
             body = el('div', 'cc-body');
             panel.appendChild(canvas); panel.appendChild(body);
             host.appendChild(panel);
-            isOpen = true; view = 'grid'; sel = controls[0].id; armed = null; busy = false; notes = {}; pg = null; list = null; slide = null;
+            isOpen = true; view = 'grid'; sel = controls[0].id; armed = null; busy = false; notes = {}; pg = null; list = null; slide = null; readDone = false;
             st = adapter.cached();                                           // readable at once, from what was last known
             buildGrid(0);
             panel.classList.toggle('frost', bake(canvas));

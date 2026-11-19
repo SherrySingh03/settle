@@ -5,7 +5,9 @@
  * movies and one for series asks TMDB for that provider's popular titles in your region; the top ~10 are kept
  * and ONE is shown, chosen by the date and the app, so it changes daily and differs per app. Apps with no
  * entry are matched by name against TMDB's provider list. Xbox shows Game Pass, GeForce NOW the top Steam
- * seller (no TMDB involved; those have no backdrop, so they keep the icon's colour field).
+ * seller (no TMDB involved; those have no backdrop, so they keep the icon's colour field). YouTube shows what's trending
+ * on YouTube in your region (with a YouTube Data API key), else a trailer for a film trending this week: TMDB's
+ * "popular on YouTube" titles are film rentals, which is not what YouTube means to most people.
  *
  * Stale-while-revalidate: whatever is cached is shown at once (even from yesterday); a newer list is fetched
  * in the background and used from the NEXT focus, never swapped under the one on screen. Cache is keyed by
@@ -16,8 +18,8 @@
     'use strict';
 
     var C = window.LAUNCHER_CONFIG, KEY = (C.keys || {}).tmdb, REG = C.region || 'IN', MAP = C.tmdbProviders || {};
-    var CK = 'settle.appinfo.v3', API = 'https://api.themoviedb.org/3', AWAY = 30 * 60 * 1000;
-    var data = null, busy = {}, hiddenAt = 0, provCache = null;
+    var CK = 'settle.appinfo.v4', API = 'https://api.themoviedb.org/3';
+    var data = null, busy = {}, provCache = null;
 
     function today() { var d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
     function dayNum() { var d = new Date(); return Math.floor(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 86400000); }
@@ -93,7 +95,27 @@
             return items.slice(0, 8).map(function (g) { return { title: g.name, label: 'Top seller on Steam', sub: 'Playable on GeForce NOW', bd: '' }; });
         });
     }
-    var GAMES = [{ re: /xbox/i, run: gamePass }, { re: /geforce/i, run: steam }];
+    // YouTube. With keys.youtube: the region's most popular videos (YouTube Data API v3, videos.list with
+    // chart=mostPopular, 1 quota unit a day here). Without: films trending this week that have a trailer on YouTube
+    // (TMDB, the same details call the movie panel makes, for the first three).
+    function youtube() {
+        var yk = (C.keys || {}).youtube;
+        if (yk) {
+            return json('https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&maxResults=10&regionCode=' + mkt() + '&key=' + encodeURIComponent(yk)).then(function (j) {
+                return (j.items || []).filter(function (v) { return v.snippet && v.snippet.title && v.snippet.liveBroadcastContent !== 'live'; })
+                    .map(function (v) { return { title: v.snippet.title, label: 'Trending on YouTube', sub: v.snippet.channelTitle || '', bd: '' }; });
+            });
+        }
+        var R = window.Recs;
+        if (!R || !R.trending || !R.details) return Promise.resolve([]);
+        return R.trending().then(function (list) {
+            var films = list.filter(function (m) { return m.type === 'movie'; }).slice(0, 3);
+            return Promise.all(films.map(function (m) { return R.details(m).then(function (x) { return x && x.trailer ? m : null; }, function () { return null; }); }));
+        }).then(function (l) {
+            return l.filter(Boolean).map(function (m) { return { title: m.title, label: 'Trailers on YouTube', sub: ['Trailer', m.year].filter(Boolean).join(' · '), bd: '' }; });
+        });
+    }
+    var GAMES = [{ re: /xbox/i, run: gamePass }, { re: /geforce/i, run: steam }, { re: /youtube/i, run: youtube }];
     function gameFor(label) { return GAMES.filter(function (g) { return g.re.test(label); })[0] || null; }
 
     /* ---------- what the rest of the app uses ---------- */
@@ -125,8 +147,6 @@
     // Mark every list stale: they are refetched on the next focus and used from the focus after that.
     function invalidate() { var s = store(); Object.keys(s.items).forEach(function (k) { s.items[k].day = ''; }); save(); }
 
-    document.addEventListener('visibilitychange', function () { if (document.hidden) hiddenAt = Date.now(); });
-    (window.onWake = window.onWake || []).push(function () { if (hiddenAt && Date.now() - hiddenAt > AWAY) invalidate(); });
 
-    window.AppInfo = { get: get, ensure: ensure, invalidate: invalidate, refresh: function () {}, onUpdate: null };
+    window.AppInfo = { get: get, ensure: ensure, invalidate: invalidate, onUpdate: null };
 })();

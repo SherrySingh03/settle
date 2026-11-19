@@ -40,7 +40,8 @@ var SRC_ICON = '<svg width="56" height="36" viewBox="0 0 56 36" aria-hidden="tru
 var PLAY = '<svg width="20" height="22" viewBox="0 0 20 22" aria-hidden="true" style="fill:currentColor;stroke:none"><path d="M2 2 L18 11 L2 20 Z"/></svg>';
 var PLUS = '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 V21 M3 12 H21"/></svg>';
 var CHECK = '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13 L10 18 L20 6"/></svg>';
-var EYE = '<svg width="26" height="24" viewBox="0 0 26 24" aria-hidden="true"><path d="M2 12 C6 5 20 5 24 12 C20 19 6 19 2 12 Z"/><circle cx="13" cy="12" r="3.2"/></svg>';
+// Watched: a tick (an eye read as "view" or "preview" more often than "seen").
+var EYE = '<svg width="26" height="24" viewBox="0 0 26 24" aria-hidden="true"><path d="M4 12.5 L10.5 19 L22 6"/></svg>';
 var INFO = '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11 V17"/><circle cx="12" cy="7.5" r="1.3" fill="currentColor" stroke="none"/></svg>';
 var NOPE ='<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 18.4 L18.4 5.6"/></svg>';
 var WX_ICONS ={ moon: MOON, sun: SUN, cloud: CLOUD };
@@ -48,12 +49,27 @@ var SHAPES = { circle: [32, 36, 120, 120, '60px'], bar: [16, 72, 152, 56, '4px']
 
 var dockItems = [], dCells = [], recs = [], pCells = [];
 var S = { zone: 'dock', di: 0, ri: 0, ai: 0, si: 0, row: 0 };
-// Rows under the dock: For tonight (0), Watchlist (1) and TV shows (2), shown in the order ORDER gives. One row is
+// Rows under the dock: For tonight (0), Watchlist (1), TV shows (2) and Up next (3), shown in the order ORDER gives. One row is
 // "active" at a time: recs, pCells, track and S.ri always describe the active one, so everything that works on the rail
 // works on any row.
+/* The two "Press ▲" hints teach a gesture. After it has been used a few times they go away for good. */
+var HINT_KEY = 'settle.hints.v1', HINTS = (function () { try { return JSON.parse(localStorage.getItem(HINT_KEY)) || {}; } catch (e) { return {}; } })();
+function hintsLearned() {
+    $('stage').classList.toggle('learned-full', (HINTS.full || 0) >= 5);
+    $('stage').classList.toggle('learned-srch', (HINTS.srch || 0) >= 3);
+}
+function learnHint(k) {
+    if ((HINTS[k] || 0) >= 5) return;                              // learnt: no storage write on every press
+    HINTS[k] = (HINTS[k] || 0) + 1;
+    try { localStorage.setItem(HINT_KEY, JSON.stringify(HINTS)); } catch (e) { /* silent */ }
+    hintsLearned();
+}
+hintsLearned();
+
 var rows = [{ list: [], cells: [], track: $('rtrack'), el: $('rail'), ri: 0 }, { list: [], cells: [], track: $('rtrack2'), el: $('rail2'), ri: 0 },
-    { list: [], cells: [], track: $('rtrack3'), el: $('rail3'), ri: 0 }];
-var ORDER = [0, 2, 1];                                           // top to bottom: For tonight, TV shows, Watchlist
+    { list: [], cells: [], track: $('rtrack3'), el: $('rail3'), ri: 0 }, { list: [], cells: [], track: $('rtrack4'), el: $('rail4'), ri: 0 }];
+var upNext = [];                                                // Up next items (42-upnext.js)
+var ORDER = [3, 0, 2, 1];                                        // top to bottom: Up next, For tonight, TV shows, Watchlist
 function shown(k) { return rows[k].el.style.display !== 'none'; }
 function rowsShown() { return ORDER.filter(function (k) { return rows[k].list.length; }); }
 // Each shown row 436 px below the last (its pos); the column moves by pos in rail mode, see paint().
@@ -162,7 +178,7 @@ function railEmpty(failed) {
     if (!none) { recsFailed = false; msg.classList.remove('on'); layoutRows(); return; }
     rows[0].el.style.display = '';
     layoutRows();
-    msg.textContent = !(window.Recs && window.Recs.hasKey) ? 'No picks yet: add a TMDB key to config.local.js and the popcorn starts popping'
+    msg.textContent = navigator.onLine === false ? 'No internet connection. Your picks come back when the TV is online' : !(window.Recs && window.Recs.hasKey) ? 'No picks yet: add a TMDB key to config.local.js and the popcorn starts popping'
         : (recsFailed ? 'The film reel jammed, so no picks right now. Settle tries again when you’re back' : 'Popping tonight’s picks… back in a moment');
     msg.classList.add('on');
 }
