@@ -7,7 +7,7 @@ settings one button away, without the ads and clutter of the stock Smart Hub.
 
 ![Home screen](docs/img/home.jpg)
 
-**[Try it in your browser](https://sherrysingh03.github.io/settle/)**: the web demo, with sample apps and titles (arrow keys, Enter, Esc). 
+**[Try it in your browser](https://settle-tv.vercel.app)**: the web demo, with sample apps and titles (arrow keys, Enter, Esc). 
 **Install it** from the [Apps2Samsung](https://github.com/Apps2Samsung/Apps2Samsung) catalogue, under Home ([how](docs/SETUP.md#installing-from-the-apps2samsung-catalogue)), or build it yourself as below.
 
 Settle is a plain web app (HTML, CSS and JavaScript, no framework) that you build on your computer and sideload

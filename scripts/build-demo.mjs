@@ -1,7 +1,7 @@
-// The browser demo for GitHub Pages: the preview (stand-in TV, apps and Vetro from src/js/mock.js) as a static site,
+// The browser demo at https://settle-tv.vercel.app: the preview (stand-in TV, apps and Vetro from src/js/mock.js) as a static site,
 // with no keys of anyone's. Without a TMDB key the rows show the built-in sample titles, and without an Unsplash key
 // the wallpaper is the bundled one. The weather is pinned to one city, so visitors' addresses are never looked up.
-//   node scripts/build-demo.mjs   -> site/
+//   node scripts/build-demo.mjs   -> site/   (then: vercel deploy --prod, from a copy of site/)
 import { readFileSync, writeFileSync, readdirSync, statSync, mkdirSync, rmSync } from 'node:fs';
 import { join, resolve, relative, sep, dirname } from 'node:path';
 import { joinApp } from './app-bundle.mjs';

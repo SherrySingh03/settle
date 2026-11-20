@@ -23,5 +23,5 @@ Thumbs.db
 .vscode/
 .idea/
 
-# The web demo (npm run build:demo), published by .github/workflows/pages.yml
+# The web demo (npm run build:demo), deployed to Vercel by hand
 site/
