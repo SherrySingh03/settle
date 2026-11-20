@@ -1,5 +1,5 @@
-// Packages src/ into dist/settle.wgt (unsigned; sign/install with your usual Tizen tooling).
-//   node scripts/build.mjs              -> dist/settle.wgt
+// Packages src/ into dist/Settle-<version>-local.wgt (unsigned; sign/install with your usual Tizen tooling).
+//   node scripts/build.mjs              -> dist/Settle-<version>-local.wgt
 //   node scripts/build.mjs --fonttest   -> dist/settle-fonttest.wgt (only the font-stretch test page)
 //   node scripts/build.mjs --public     -> dist/Settle-<version>.wgt for a GitHub release and the Apps2Samsung catalogue:
 //                                          none of your keys or addresses, the settings file Apps2Samsung fills in on install
@@ -132,7 +132,7 @@ end.writeUInt32LE(cd.length, 12); end.writeUInt32LE(offset, 16);
 
 mkdirSync(dist, { recursive: true });
 const version = (readFileSync(join(src, 'config.xml'), 'utf8').match(/<widget[^>]*\sversion="([^"]+)"/) || [])[1] || '0';
-const out = join(dist, fonttest ? 'settle-fonttest.wgt' : pub ? 'Settle-' + version + '.wgt' : 'settle.wgt');
+const out = join(dist, fonttest ? 'settle-fonttest.wgt' : pub ? 'Settle-' + version + '.wgt' : 'Settle-' + version + '-local.wgt');
 writeFileSync(out, Buffer.concat([...parts, cd, end]));
 
 const js = names.filter((n) => n.endsWith('.js')).reduce((s, n) => s + files.get(n).length, 0);

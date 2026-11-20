@@ -9,8 +9,9 @@ This guide takes you from a fresh clone to Settle running on your TV, with the H
 5. [Install Settle with Apps2Samsung](#5-install-settle-with-apps2samsung)
 6. [Optional: Vetro (Home button, Control Center)](#6-optional-vetro-home-button-control-center)
 7. [Optional: a screensaver app](#7-optional-a-screensaver-app)
-8. [Updating](#8-updating)
-9. [Troubleshooting and Diagnostics](#9-troubleshooting-and-diagnostics)
+8. [Optional: Open in Nuvio](#8-optional-open-in-nuvio)
+9. [Updating](#9-updating)
+10. [Troubleshooting and Diagnostics](#10-troubleshooting-and-diagnostics)
 
 ---
 
@@ -67,7 +68,7 @@ Trakt and the rest.
 ## 3. Build the package
 
 ```sh
-npm run build            # -> dist/settle.wgt
+npm run build            # -> dist/Settle-<version>-local.wgt
 ```
 
 The package is unsigned; Apps2Samsung signs it when it installs it. The build also minifies the JavaScript and
@@ -97,7 +98,7 @@ tips.
 ## 5. Install Settle with Apps2Samsung
 
 1. Install and open Apps2Samsung, and pick your TV.
-2. Choose **your own `.wgt`** and select `dist/settle.wgt`, then **Install**.
+2. Choose **your own `.wgt`** and select `dist/Settle-<version>-local.wgt`, then **Install**.
 3. The first time, Apps2Samsung asks you to sign in to Samsung once to create a signing certificate; it reuses it
    for every later install. (It picks a Public or Partner certificate depending on what the app needs.)
 4. Settle appears in the TV's apps. Open it.
@@ -176,11 +177,36 @@ Settle that is already on screen. If double Home does nothing on your TV, use th
 
 ## 7. Optional: a screensaver app
 
-After 2 minutes with no remote input on the home screen, Settle opens a screensaver app if one is installed: it
-looks for an app whose id or name contains "aerial", or the one set as `screensaver.appId` in `config.js`. Change
-the timeout (or turn it off) on the Control Center's Screensaver tile.
+After 2 minutes with no remote input on the home screen, Settle opens a screensaver app if one is installed. Settle
+doesn't include one: install **Aerial Screensaver** ([jeancarlos/aerial-tizen](https://github.com/jeancarlos/aerial-tizen),
+Apple TV's aerial videos in 4K) from the Apps2Samsung catalogue. Settle looks for an app whose id or name contains
+"aerial", or the one set as `screensaver.appId` in `config.js`. Change the timeout (or turn it off) on the
+Control Center's Screensaver tile.
 
-## 8. Updating
+## 8. Optional: Open in Nuvio
+
+Settle can open any film or show it shows in Nuvio, on that title's page, including ones none of your services
+stream. It works with either Nuvio app, and uses Nuvio Legacy when you have both:
+
+| App | Opens a title from Settle |
+|---|---|
+| [Nuvio Legacy](https://github.com/iqui27/nuvio-native-legacy) (`NuvioTV002.Nuvio`) | needs a version with [Tizen deep links](https://github.com/iqui27/nuvio-native-legacy/pull/807); older versions just open Nuvio |
+| [Nuvio](https://github.com/NuvioMedia/NuvioWeb), the official web app (`NuvioTV001.NuvioTV`) | yes, from version 1.4.1 |
+
+1. Install one of them from the Apps2Samsung catalogue and set it up there: sign in and add your sources. Settle
+   can't see inside Nuvio, so it can't tell whether that's done.
+2. On the TV, open Control Center > Settle and turn on **Open in Nuvio**. It's off until you do, and it's listed
+   only while Nuvio is installed.
+
+Details then shows **Open in Nuvio** after your own services. When none of your apps has the title, the main
+button opens Nuvio instead of saying "Not streaming yet". Nuvio opens on the title's page, not playing; for Up
+next it opens the show, not the episode.
+
+If you have both apps and your Nuvio Legacy is older than the version above, titles open in Legacy without
+reaching the title's page. Update Legacy, or uninstall the one you don't use. The apps, their order and their links
+are in `config.js` under `nuvio.apps`.
+
+## 9. Updating
 
 ```sh
 git pull
@@ -188,9 +214,9 @@ npm install
 npm run build
 ```
 
-Then install `dist/settle.wgt` again with Apps2Samsung. Your dock layout and settings on the TV are kept.
+Then install `dist/Settle-<version>-local.wgt` again with Apps2Samsung. Your dock layout and settings on the TV are kept.
 
-## 9. Troubleshooting and Diagnostics
+## 10. Troubleshooting and Diagnostics
 
 Press **Yellow** in Settle to open Diagnostics: the build, the app list, icons, keys pressed, the screensaver's
 decisions, the Vetro connection and recent errors.

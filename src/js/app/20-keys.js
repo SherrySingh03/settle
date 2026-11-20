@@ -41,16 +41,24 @@ function railKey(d) {
     paint();
 }
 
+// Whether the title's own service is an app on this TV.
+function haveProvider(r) { return P.isInstalled((C.providerApps || {})[r.provider] || r.provider) || P.isInstalled(r.provider); }
+// Open in Nuvio (when turned on): offered for any title with a TMDB id; it is the main button only when none of
+// your apps can play the title.
+function nuvioFor(r) { return !!r && nuvioOn() && !!r.tmdb && !r.connect; }
+function nuvioMain(r) { return nuvioFor(r) && !r.loading && (r.streaming === false || !haveProvider(r)); }
 function openItem(r) {
     r = r || recs[S.ri];
     if (r.connect) return openTrakt();
-    if (r.streaming === false || !(P.isInstalled((C.providerApps || {})[r.provider] || r.provider) || P.isInstalled(r.provider))) {
+    if (nuvioMain(r)) return launchInNuvio(r);
+    if (r.streaming === false || !haveProvider(r)) {
         toast(r.streaming === false ? r.title + ' isn’t streaming here yet. Watchlist it and check back' : 'You don’t have ' + r.provider + ' on this TV');
         return;
     }
     launchTitle(r);                                               // straight to the title where the app allows it
 }
-var launchTitle = function (r) { P.launchProvider(r.provider); };    // replaced below, once launches are wrapped
+var launchTitle = function (r) { P.launchProvider(r.provider); };
+var launchInNuvio = function (r) { P.launchNuvio(r.type, r.tmdb); };    // replaced below, once launches are wrapped
 
 // The movie panel's buttons, left to right.
 var ACTS = [a1, a5, a2, a3, a4];

@@ -28,12 +28,12 @@ picture, sound and inputs from it.
 | **For tonight** | Film recommendations (Trakt picks, or TMDB's popular titles), ranked so that what you can stream on the apps you have comes first, then rentals. A fresh row every day. |
 | **TV shows** | Shows streaming on your apps, without children's, news, reality, soap and talk shows. |
 | **Watchlist** | Your Trakt watchlist, films and shows. |
-| **Details** | Where to watch, ratings (IMDb and Rotten Tomatoes), cast, a trailer on YouTube, More like this, and Open buttons that go straight to the title in Prime Video, Apple TV or Zee5 (and a second button when another of your apps has it). |
+| **Details** | Where to watch, ratings (IMDb and Rotten Tomatoes), cast, a trailer on YouTube, More like this, and Open buttons that go straight to the title in Prime Video, Apple TV or Zee5 (and a second button when another of your apps has it). Optionally, Open in Nuvio for any title. |
 | **Search** | Up twice from the dock. Films, shows and your installed apps; recent and trending titles before you type. |
 | **App switcher** | See the apps running in the background, jump back to one, or close them to free memory (with the free-memory figure, through Vetro). |
 | **Control Center** | Sleep (now or on a timer), picture mode, Performance mode, sound mode, audio output, input, recent apps, Bluetooth, brightness, and a Settle page for the screensaver, wallpaper, refresh, backup and Diagnostics. Needs Vetro. |
 | **App profiles** | Per app: a picture mode, Performance mode and closing other apps when you open it from Settle, put back when you return. |
-| **Screensaver** | After 2 minutes idle (adjustable), opens an Aerial-style screensaver app if you have one installed. |
+| **Screensaver** | After 2 minutes idle (adjustable), opens [Aerial Screensaver](https://github.com/jeancarlos/aerial-tizen) (Apple TV's aerial videos, in the Apps2Samsung catalogue) if you have it installed. |
 | **Wallpaper** | Unsplash photos that don't repeat, with the photographer's credit. |
 | **Backup** | Your dock, profiles and choices saved to your PC and restored from it (`npm run logs` on the PC). |
 | **Diagnostics** | A screen that shows what Settle sees, and can send a report to your computer. |
@@ -59,10 +59,10 @@ cd settle
 npm install
 npm run setup      # asks for your (optional) API keys and TV details, writes src/js/config.local.js
 npm run preview    # try it in a desktop browser at http://localhost:8080 (arrow keys, Enter, Esc)
-npm run build      # makes dist/settle.wgt
+npm run build      # makes dist/Settle-<version>-local.wgt
 ```
 
-Then install `dist/settle.wgt` on the TV with [Apps2Samsung](https://github.com/Apps2Samsung/Apps2Samsung), and
+Then install `dist/Settle-<version>-local.wgt` on the TV with [Apps2Samsung](https://github.com/Apps2Samsung/Apps2Samsung), and
 optionally install Vetro and map the Home button to Settle.
 
 ### What needs what
@@ -78,6 +78,7 @@ optionally install Vetro and map the Home button to Settle.
 | Trailers | YouTube on the TV, paired once with its TV code (see SETUP) |
 | "Trending on YouTube" above the dock (otherwise: trailers for films trending this week) | an optional [YouTube Data API](https://console.cloud.google.com/apis/library/youtube.googleapis.com) key |
 | Home button opens Settle, Control Center, Performance mode, sleep timer, app profiles, free memory in the app switcher | [Vetro](https://github.com/andrearicci93/vetro) on the TV (root) |
+| Open in Nuvio, for any title | [Nuvio Legacy](https://github.com/iqui27/nuvio-native-legacy) or the official [Nuvio](https://github.com/NuvioMedia/NuvioWeb) app (Apps2Samsung catalogue), turned on in Control Center > Settle ([how](docs/SETUP.md#8-optional-open-in-nuvio)) |
 | Backup and restore, Diagnostics reports | `npm run logs` running on your computer |
 
 ### Known limits
@@ -91,6 +92,9 @@ optionally install Vetro and map the Home button to Settle.
 - **Trailers play in the YouTube app** through YouTube's own cast protocol, which is undocumented. Settle needs the
   app's screen id, read through Vetro or set once (see SETUP); when a step fails, YouTube still opens and Settle
   says so.
+- **Open in Nuvio** opens the title's page in Nuvio, not playback, and for Up next the show rather than the
+  episode. Nuvio Legacy needs a version with [Tizen deep links](https://github.com/iqui27/nuvio-native-legacy/pull/807)
+  to open a title; older versions just open Nuvio.
 - **Diagnostics reports and backups to your computer** need a package you build yourself (`npm run setup` asks for
   the address); with the catalogue package, Diagnostics is shown on screen only.
 - **Your keys are inside the package**: the catalogue writes them into your copy, and `npm run build` into yours.

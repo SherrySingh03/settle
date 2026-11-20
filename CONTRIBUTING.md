@@ -8,7 +8,7 @@ Thanks for helping. Settle runs on TVs with little memory and slow CPUs, so a fe
 npm install
 npm run setup        # optional keys; without them the preview uses stand-in data
 npm run preview      # http://localhost:8080 (arrows, Enter, Esc; d/c/g/e = Yellow/Red/Green/Blue)
-npm run build        # dist/settle.wgt
+npm run build        # dist/Settle-<version>-local.wgt
 ```
 
 The preview loads `src/js/mock.js`, which fakes the TV: an app list, running apps and a stand-in Vetro that

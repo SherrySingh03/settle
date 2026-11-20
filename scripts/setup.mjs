@@ -89,5 +89,5 @@ Saved ${target}
 
 Next:
   npm run preview     try it in a desktop browser (http://localhost:8080)
-  npm run build       make dist/settle.wgt, then install it with Apps2Samsung (see docs/SETUP.md)
+  npm run build       make dist/Settle-<version>-local.wgt, then install it with Apps2Samsung (see docs/SETUP.md)
 The .wgt contains these keys: keep it private.`);

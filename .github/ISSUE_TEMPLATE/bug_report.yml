@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Thanks for reporting. [Known limits](https://github.com/SherrySingh03/settle#known-limits) and the
-        [troubleshooting table](https://github.com/SherrySingh03/settle/blob/main/docs/SETUP.md#9-troubleshooting-and-diagnostics)
+        [troubleshooting table](https://github.com/SherrySingh03/settle/blob/main/docs/SETUP.md#10-troubleshooting-and-diagnostics)
         cover the common cases. **Never paste API keys, IP addresses or account names.**
   - type: textarea
     id: what

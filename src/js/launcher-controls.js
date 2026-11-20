@@ -23,6 +23,7 @@
         { id: 'screensaver', label: 'Screensaver', kind: 'choice' },
         { id: 'wallpaper', label: 'Wallpaper', kind: 'run' },
         { id: 'recs', label: 'Recommendations', kind: 'run' },
+        { id: 'nuvio', label: '', kind: 'run' },                        // label: Settle.nuvio.label()
         { id: 'backup', label: 'Back up to this PC', kind: 'run' },
         { id: 'restore', label: 'Restore from this PC', kind: 'run' },
         { id: 'diag', label: 'Diagnostics', kind: 'run' }
@@ -32,7 +33,7 @@
        lists and recent searches, sent to the PC running `npm run logs` (the same address Diagnostics reports go to).
        Restore reads the latest one back and restarts Settle. Never included: the Trakt sign-in, keys, or caches. */
     var KEEP = ['settle.dock.v1', 'settle.hide.v1', 'settle.profiles.v1', 'settle.screensaver.v1', 'settle.perf.v1', 'settle.hints.v1',
-        'settle.wl.local', 'settle.watched.v1', 'settle.notinterested.v1', 'settle.search.recent.v1', 'settle.wall.topic.v1'];
+        'settle.wl.local', 'settle.watched.v1', 'settle.notinterested.v1', 'settle.search.recent.v1', 'settle.wall.topic.v1'].concat(window.Settle && window.Settle.nuvio ? [window.Settle.nuvio.key] : []);
     function pcUrl() {
         var u = ((window.LAUNCHER_CONFIG || {}).controlCenter || {}).logUrl;
         if (!u) throw new Error('Set logUrl in config.local.js (npm run setup)');
@@ -66,6 +67,10 @@
             });
         });
     }
+    /* Open in Nuvio: off unless you turn it on, and listed only when a Nuvio app is installed. Settle can't
+       see whether Nuvio is set up, so turning it on is you saying it is. */
+    function nuvio() { return (window.Settle && window.Settle.nuvio) || null; }
+    function hasNuvio() { return !!(window.Platform && window.Platform.hasNuvio && window.Platform.hasNuvio() && nuvio()); }
     var SS = [[0, 'Off'], [120000, '2 min'], [300000, '5 min'], [600000, '10 min'], [1800000, '30 min']];
     function ssView() {
         var S = window.Screensaver;
@@ -78,7 +83,7 @@
     }
     var IDLE = { wallpaper: { value: 'New photo', current: null }, recs: { value: 'Refresh', current: null }, diag: { value: 'Open', current: null }, backup: { value: 'Dock, profiles, choices', current: null }, restore: { value: 'Latest backup', current: null }, settle: { value: 'Screensaver, wallpaper', current: null } };
 
-    function merge(m) { m = m || {}; Object.keys(IDLE).forEach(function (k) { m[k] = IDLE[k]; }); m.screensaver = ssView(); m.sleep = sleepView(); return m; }
+    function merge(m) { m = m || {}; Object.keys(IDLE).forEach(function (k) { m[k] = IDLE[k]; }); m.screensaver = ssView(); m.sleep = sleepView(); m.nuvio = { value: nuvio() && nuvio().wanted() ? 'On' : 'Off', current: null }; return m; }
 
     // Recent apps: opens the app switcher (the panel closes first). It goes after Input, where Wi-Fi used to be.
     var RECENT = { id: 'recent', label: 'Recent apps', kind: 'run' };
@@ -124,7 +129,11 @@
                 var i = c.map(function (x) { return x.id; }).indexOf('input') + 1;
                 return c.slice(0, i).concat([RECENT], c.slice(i), EXTRA);
             },
-            page: function (id) { return id === 'settle' ? SETTLE_ROWS.slice() : base.page(id); },
+            page: function (id) {
+                if (id !== 'settle') return base.page(id);
+                return SETTLE_ROWS.filter(function (r) { return r.id !== 'nuvio' || hasNuvio(); })
+                    .map(function (r) { return r.id === 'nuvio' ? { id: r.id, label: nuvio().label(), kind: r.kind } : r; });
+            },
             options: function (id) { return id === 'sleep' ? sleepOptions() : id === 'screensaver' ? SS.map(function (o) { return { id: String(o[0]), label: o[1] }; }) : base.options(id); },
             cached: function () { return merge(base.cached()); },
             read: function () { return base.read().then(merge, function () { return merge(base.cached()); }); },
@@ -143,6 +152,12 @@
                         window.Settle.askPerf();                                  // the panel closes; the question opens
                         return null;
                     });
+                }
+                if (id === 'nuvio') {
+                    if (!nuvio()) return Promise.reject(new Error('Not available'));
+                    var on = !nuvio().wanted();
+                    if (!nuvio().set(on)) return Promise.reject(new Error('Could not save this'));
+                    return Promise.resolve(on ? 'On' : 'Off');
                 }
                 if (id === 'backup') return backup();
                 if (id === 'restore') return restore();

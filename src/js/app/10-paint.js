@@ -92,7 +92,7 @@ function renderHero() {
         $('h-mt').textContent = r.meta || '';
         showImdb(r);
         $('h-desc').textContent = r.desc || '';
-        a1.lastChild.textContent = r.connect ? 'Connect Trakt' : (r.streaming === false ? 'Not streaming yet' : 'Open in ' + (r.provider || 'app'));
+        a1.lastChild.textContent = r.connect ? 'Connect Trakt' : nuvioMain(r) ? nuvioLabel() : (r.streaming === false ? 'Not streaming yet' : 'Open in ' + (r.provider || 'app'));
         a2.style.display = r.connect ? 'none' : '';
         a3.style.display = r.connect ? 'none' : '';
         a4.style.display = r.connect ? 'none' : '';

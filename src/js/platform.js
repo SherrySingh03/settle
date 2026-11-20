@@ -219,7 +219,7 @@
     function load(cfg) {
         if (!HAS) {
             raw = cfg.apps.map(function (a) { return { id: a.id || ('mock.' + a.label), name: a.label, packageId: '', iconPath: '', show: true }; })
-                .concat(((window.MOCK && window.MOCK.apps) || []).map(function (n) { return { id: 'mock.' + n, name: n, packageId: '', iconPath: '', show: true }; }))
+                .concat(((window.MOCK && window.MOCK.apps) || []).map(function (n) { return { id: ((window.MOCK.ids || {})[n]) || ('mock.' + n), name: n, packageId: '', iconPath: '', show: true }; }))
                 .concat(((window.MOCK && window.MOCK.hidden) || []).map(function (id) { return { id: id, name: id, packageId: '', iconPath: '', show: true }; }));
             // Preview only: MOCK.tvApps ([{ id, name }], e.g. read from a TV) stands in for the TV's own list, to rebuild its exact state
             if (window.MOCK && window.MOCK.tvApps) raw = window.MOCK.tvApps.map(function (a) { return { id: a.id, name: a.name, packageId: '', iconPath: '', show: true }; });
@@ -348,6 +348,35 @@
             } catch (e) { note('deeplink', id, e); no(e); }
         });
     }
+    // Nuvio opens a title on its page from an app control carrying the link. LAUNCHER_CONFIG.nuvio.apps lists the apps
+    // in order of preference; the first one installed is used, with its own settings over the shared ones.
+    function nuvioApp() {
+        var n = window.LAUNCHER_CONFIG.nuvio || {}, apps = n.apps || [];
+        for (var i = 0; i < apps.length; i++) {
+            var a = apps[i] || {}, id = a.appId;
+            if (!id || !a.link || !raw.some(function (x) { return x.id === id; })) continue;
+            return { appId: id, link: a.link, operation: a.operation || n.operation, key: a.key || n.key, types: a.types || n.types || {} };
+        }
+        return null;
+    }
+    function nuvioLink(type, tmdb) {
+        var n = nuvioApp();
+        if (!n) return '';
+        return n.link.replace('{type}', n.types[type] || n.types.movie || type).replace('{tmdb}', encodeURIComponent(tmdb));
+    }
+    function launchNuvio(type, tmdb) {
+        var n = nuvioApp();
+        if (!n) return Promise.reject(new Error('Nuvio is not installed'));
+        var link = nuvioLink(type, tmdb), NUVIO = n.appId;
+        noteLaunch(NUVIO);
+        return new Promise(function (ok, no) {
+            if (!HAS) { console.log('[nuvio] ' + link); return ok(); }
+            try {
+                var ctl = new tizen.ApplicationControl(n.operation, null, null, null, [new tizen.ApplicationControlData(n.key, [link])]);
+                tizen.application.launchAppControl(ctl, NUVIO, function () { ok(); }, function (e) { note('nuvio', NUVIO, e); no(e); });
+            } catch (e) { note('nuvio', NUVIO, e); no(e); }
+        });
+    }
     // The installed app for a "where to watch" provider name, or null.
     function providerApp(name) { return byLabel((window.LAUNCHER_CONFIG.providerApps || {})[name]) || byLabel(name) || null; }
 
@@ -433,6 +462,9 @@
     window.Platform = {
         apps: apps, ready: ready, isInstalled: isInstalled, launch: launch, launchProvider: launchProvider,
         launchDeep: launchDeep, providerApp: providerApp,
+        nuvioLink: nuvioLink, launchNuvio: launchNuvio,
+        hasNuvio: function () { return !!nuvioApp(); },
+        nuvioApp: function () { var n = nuvioApp(); return n ? n.appId : null; },
         // Never offered for uninstalling: Settle itself and Vetro (Settle depends on both). The TV refuses its own apps.
         canUninstall: function (id) {
             var a = raw.filter(function (x) { return x.id === id; })[0];

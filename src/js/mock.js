@@ -1,11 +1,17 @@
 /* Preview-only stand-in data (design board content). Excluded from the .wgt build. */
 (function () {
     'use strict';
+    // Which Nuvio apps the preview has: both by default; window.__nuvio = 'legacy' or 'official' for one, __noNuvio for none.
+    var NV = (window.LAUNCHER_CONFIG.nuvio || {}).apps || [], nvMode = window.__noNuvio ? '' : (window.__nuvio || 'both');
+    var nvApps = (nvMode === 'both' || nvMode === 'legacy' ? ['Nuvio Legacy'] : []).concat(nvMode === 'both' || nvMode === 'official' ? ['Nuvio'] : []);
     window.MOCK = {
         // Exercises the icon pipeline in the browser: one good icon, one unreadable path (-> text chip).
         icons: { 'Netflix': 'img/preview-wide.svg', 'YouTube': '/nonexistent/res/ignition.png', 'Spotify': 'img/preview-icon.svg', 'Plex': '/nonexistent/res/ignition.png', 'Kodi': 'img/preview-generic.svg', 'Apple Music': 'img/preview-generic.svg' },
         // Extra installed apps so the dock editor has something to add in the browser preview.
-        apps: ['Xbox', 'Disney+', 'Twitch', 'Apple Music', 'Stremio', 'Kodi', 'Crunchyroll', 'Weather', 'Calendar', 'Photos', 'Browser', 'Gallery', 'Fitness', 'Music', 'News', 'Games', 'Radio', 'Podcasts', 'Maps', 'Sling', 'Hulu', 'Tubi', 'Pluto TV', 'a1 Sorting Test'],
+        apps: ['Xbox', 'Disney+', 'Twitch', 'Apple Music', 'Stremio', 'Kodi', 'Crunchyroll', 'Weather', 'Calendar', 'Photos', 'Browser', 'Gallery', 'Fitness', 'Music', 'News', 'Games', 'Radio', 'Podcasts', 'Maps', 'Sling', 'Hulu', 'Tubi', 'Pluto TV', 'a1 Sorting Test', 'ArtApp'].concat(nvApps),
+        // Preview apps whose real TV id matters (Nuvio is found by its id): config's first Nuvio app, then its second.
+        // ArtApp is Samsung's Art mode, with the system-style id the 2025 QN70F gives it.
+        ids: { 'Nuvio Legacy': (NV[0] || {}).appId, 'Nuvio': (NV[1] || {}).appId, 'ArtApp': 'org.tizen.art-app' },
         // Things the TV lists as visible but that are not applications: they must never reach All apps.
         hidden: ['ep-dataservice-app', 'adplatform.ADPlayer', 'klciSQIYEM.ContinueWatchingService', 'org.tizen.settings-service', 'WykOS4t4F0.cmsWebApp'],
         // Apps "running" in the preview, for the app switcher (ids as the mock app list makes them).
@@ -23,7 +29,7 @@
             ['Glasshouse', '#203226', '#A8D5A2', 'arch', 'Prime Video', 'Prime Video', 'Streaming in India', '2023 · Mystery · 1h 57m · U/A 16+', 'An orchid grower is the only witness to a very quiet crime.'],
             ['Ember Season', '#33221A', '#F08A4B', 'circle', 'Zee5', 'Zee5', 'Streaming in India', '2024 · Drama · 2h 09m · U/A 13+', 'A village waits out the burning season together.']
         ].map(function (r, i) {
-            return { id: 'm' + i, title: r[0], bg: r[1], fg: r[2], shape: r[3], prov: r[4], provider: r[5], note: r[6],
+            return { id: 'm' + i, tmdb: 900100 + i, title: r[0], bg: r[1], fg: r[2], shape: r[3], prov: r[4], provider: r[5], note: r[6],
                      meta: r[7], desc: r[8], wl: !!r[9], streaming: true };
         }),
         // The TV shows row without a TMDB key: made-up shows, like the films above.
@@ -35,7 +41,7 @@
             ['Small Hours', '#2C2A22', '#D7CBA0', 'arch', 'SonyLIV', 'SonyLIV', 'Streaming in India', '2024 · Drama · 2 seasons · U/A 13+', 'A hospital ward between midnight and dawn.'],
             ['Tidewater', '#1C302A', '#86C9A8', 'bar', 'Zee5', 'Zee5', 'Streaming in India', '2022 · Mystery · 2 seasons · U/A 16+', 'A coastal town where the tide keeps returning things that were lost.']
         ].map(function (r, i) {
-            return { id: 's' + i, title: r[0], bg: r[1], fg: r[2], shape: r[3], prov: r[4], provider: r[5], note: r[6],
+            return { id: 's' + i, tmdb: 900200 + i, title: r[0], bg: r[1], fg: r[2], shape: r[3], prov: r[4], provider: r[5], note: r[6],
                      meta: r[7], desc: r[8], type: 'tv', streaming: true };
         })
     };

@@ -7,6 +7,7 @@ a4.innerHTML = NOPE + '<span>Not interested</span>';
 a5.innerHTML = INFO + '<span>Details, cast and more like this</span>';
 $('dt-open').innerHTML = PLAY + '<span></span>';
 $('dt-alt').innerHTML = '<span></span>';
+$('dt-nv').innerHTML = '<span></span>'; $('dt-nv').lastChild.textContent = nuvioLabel();
 $('dt-wl').innerHTML = PLUS + CHECK + '<span></span>';
 $('dt-tr').innerHTML = '<svg width="26" height="24" viewBox="0 0 26 24" aria-hidden="true"><rect x="2" y="4" width="22" height="16" rx="4"/><path d="M11 9 L16 12 L11 15 Z" fill="currentColor"/></svg><span>Trailer</span>';
 stage.classList.add('no-wx');
@@ -35,4 +36,4 @@ P.apps(C, appsChanged).then(function () {
 });
 armIdle();
 
-window.Settle = { ask: function (o, yes) { closeCC(); openAsk(o, yes); }, openDiag: function () { closeCC(); openDiag(); }, setPerf: setPerf, askPerf: askPerf, setShows: setShows, openSwitcher: function () { closeCC(); openSwitcher(); }, recsFailed: function () { railEmpty(true); }, state: S, recs: function () { return recs; }, rows: function () { return [rows[0].list, rows[1].list, rows[2].list, rows[3].list]; }, upNext: function () { return upNext; }, setUpNext: unApply, refreshUpNext: unRefresh, setWeather: setWeather, setRecs: setRecs, toast: toast };
+window.Settle = { nuvio: { wanted: nuvioWanted, set: setNuvio, key: NUVIO_KEY, label: nuvioLabel }, ask: function (o, yes) { closeCC(); openAsk(o, yes); }, openDiag: function () { closeCC(); openDiag(); }, setPerf: setPerf, askPerf: askPerf, setShows: setShows, openSwitcher: function () { closeCC(); openSwitcher(); }, recsFailed: function () { railEmpty(true); }, state: S, recs: function () { return recs; }, rows: function () { return [rows[0].list, rows[1].list, rows[2].list, rows[3].list]; }, upNext: function () { return upNext; }, setUpNext: unApply, refreshUpNext: unRefresh, setWeather: setWeather, setRecs: setRecs, toast: toast };

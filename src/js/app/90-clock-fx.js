@@ -76,6 +76,11 @@ function returnFx() {
             });
         });
     };
+    launchInNuvio = function (r) {
+        launchFx(function () {
+            P.launchNuvio(r.type, r.tmdb).catch(function () { returnFx(); toast('Couldn’t open ' + nuvioName()); });
+        });
+    };
     P.launchFirst = function (ids) {
         return new Promise(function (ok, no) { launchFx(function () { rawFirst(ids).then(ok, function (e) { returnFx(); no(e); }); }); });
     };

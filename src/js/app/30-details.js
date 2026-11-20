@@ -14,7 +14,8 @@ function provList(list) {                                        // the services
 }
 function dtButtons() {
     var r = DT.r;
-    $('dt-open').lastChild.textContent = r.loading ? 'Finding where to watch…' : (r.streaming === false ? 'Not streaming yet' : 'Open in ' + (r.provider || 'app'));
+    $('dt-open').lastChild.textContent = r.loading ? 'Finding where to watch…' : nuvioMain(r) ? nuvioLabel() : (r.streaming === false ? 'Not streaming yet' : 'Open in ' + (r.provider || 'app'));
+    $('dt-nv').style.display = nvExtra(r) ? '' : 'none';
     $('dt-wl').children[0].style.display = r.wl ? 'none' : '';
     $('dt-wl').children[1].style.display = r.wl ? '' : 'none';
     $('dt-wl').lastChild.textContent = r.wl ? 'On watchlist' : 'Watchlist';
@@ -23,15 +24,26 @@ function dtButtons() {
     $('dt-alt').style.display = DT.alt ? '' : 'none';
     if (DT.alt) $('dt-alt').lastChild.textContent = 'Open in ' + DT.alt;
     var bs = dtBtns();
+    // When the buttons don't fit the panel, Trailer and Watchlist become icons, as on the rail, named in the hint.
+    // Measured once per set of buttons (not on every move), since reading the layout costs a reflow.
+    var sig = bs.map(function (b) { return b.id + ':' + b.lastChild.textContent; }).join('|');
+    if (sig !== DT.fitSig) {
+        $('dt-tr').classList.remove('ic'); $('dt-wl').classList.remove('ic');
+        var acts = $('dt-acts');
+        DT.fitSig = sig; DT.tight = bs.indexOf($('dt-nv')) >= 0 && acts.scrollWidth > acts.clientWidth;   // only Nuvio's extra button changes the layout
+        $('dt-tr').classList.toggle('ic', DT.tight); $('dt-wl').classList.toggle('ic', DT.tight);
+    }
+    var tight = DT.tight;
     if (DT.b >= bs.length) DT.b = bs.length - 1;
     setOn('dt', DT.f === 'b' ? bs[DT.b] : null);
     setOn('lk', DT.f === 'l' ? DT.cells[DT.li] : null);
     var pick = DT.f === 'l' && DT.like[DT.li];
     $('dt-ll').textContent = pick ? 'More like this · ' + pick.title : 'More like this';
     $('dt-hint').textContent = DT.f === 'l' ? 'OK: see this one · ▲ buttons · Back' + (DT.stack.length ? ': previous film' : '')
-        : (DT.cells.length ? '▼ More like this · ' : '') + 'OK · Back' + (DT.stack.length ? ': previous film' : ' to close');
+        : (tight && bs[DT.b] && bs[DT.b].classList.contains('ic') ? bs[DT.b].lastChild.textContent + ' · ' : '') + (DT.cells.length ? '▼ More like this · ' : '') + 'OK · Back' + (DT.stack.length ? ': previous film' : ' to close');
 }
-function dtBtns() { return [$('dt-open'), DT.alt && $('dt-alt'), DT.trailer && $('dt-tr'), $('dt-wl')].filter(Boolean); }
+function nvExtra(r) { return nuvioFor(r) && !r.loading && !nuvioMain(r); }               // Nuvio after your services, unless it is the main button
+function dtBtns() { return [$('dt-open'), DT.alt && $('dt-alt'), nvExtra(DT.r) && $('dt-nv'), DT.trailer && $('dt-tr'), $('dt-wl')].filter(Boolean); }
 // A second service you have that streams this title: its own Open button, so you're not tied to the first one.
 function altService(r, stream) {
     var mine = stream.filter(function (p) { return p.onTv && p.name !== r.provider; })[0];
@@ -169,6 +181,7 @@ function dtKey(d) {
         if (b.id === 'dt-tr') { playTrailer(); return; }
         if (DT.r.loading) return;
         if (b.id === 'dt-open') { openItem(DT.r); return; }
+        if (b.id === 'dt-nv') { launchInNuvio(DT.r); return; }
         if (b.id === 'dt-alt') { var o = {}; Object.keys(DT.r).forEach(function (k) { o[k] = DT.r[k]; }); o.provider = DT.alt; openItem(o); return; }
         toggleWatchlist(DT.r); dtButtons();
     }

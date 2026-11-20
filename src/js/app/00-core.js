@@ -53,6 +53,13 @@ var S = { zone: 'dock', di: 0, ri: 0, ai: 0, si: 0, row: 0 };
 // "active" at a time: recs, pCells, track and S.ri always describe the active one, so everything that works on the rail
 // works on any row.
 /* The two "Press ▲" hints teach a gesture. After it has been used a few times they go away for good. */
+// Open in Nuvio (Control Center > Settle): off unless turned on (nuvioWanted), and offered only with the app installed.
+var NUVIO_KEY = 'settle.nuvio.v1';
+function nuvioWanted() { try { return localStorage.getItem(NUVIO_KEY) === '1'; } catch (e) { return false; } }
+function setNuvio(on) { try { localStorage.setItem(NUVIO_KEY, on ? '1' : '0'); } catch (e) { return false; } heroId = null; return true; }   // '0', not removed: a backup restores off too
+function nuvioOn() { return P.hasNuvio() && nuvioWanted(); }
+function nuvioName() { return (C.nuvio || {}).name || 'Nuvio'; }
+function nuvioLabel() { return 'Open in ' + nuvioName(); }
 var HINT_KEY = 'settle.hints.v1', HINTS = (function () { try { return JSON.parse(localStorage.getItem(HINT_KEY)) || {}; } catch (e) { return {}; } })();
 function hintsLearned() {
     $('stage').classList.toggle('learned-full', (HINTS.full || 0) >= 5);

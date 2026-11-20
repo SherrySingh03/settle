@@ -1,6 +1,6 @@
 {
   "name": "settle",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "private": true,
   "description": "Settle: a calm, lean home screen for Samsung Tizen TVs, with recommendations, an app switcher and a Control Center (fork of NelsonEU/arn0-tv)",
   "license": "MIT",

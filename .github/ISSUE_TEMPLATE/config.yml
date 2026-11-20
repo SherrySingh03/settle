@@ -1,7 +1,7 @@
 blank_issues_enabled: false
 contact_links:
   - name: Setup guide and troubleshooting
-    url: https://github.com/SherrySingh03/settle/blob/main/docs/SETUP.md#9-troubleshooting-and-diagnostics
+    url: https://github.com/SherrySingh03/settle/blob/main/docs/SETUP.md#10-troubleshooting-and-diagnostics
     about: Installing, keys, Vetro, and fixes for the common problems.
   - name: Vetro itself (rooting, Remapper, the dashboard)
     url: https://github.com/andrearicci93/vetro/issues

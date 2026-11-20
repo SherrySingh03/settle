@@ -34,6 +34,15 @@ window.LAUNCHER_CONFIG = {
     //   appId: '' finds the installed app whose id or name contains "aerial"; set it to use a specific app.
     //   timeoutMs: 0 turns it off. The Control Center's Screensaver tile overrides this on the TV.
     screensaver: { appId: 'AerialScr0.AerialScreensaver', timeoutMs: 120000 },
+    // Open in Nuvio (turned on in Control Center > Settle): the first app in `apps` that is installed opens the title.
+    // Both take an app control whose data <key> holds the link, with {type} (from types) and {tmdb} filled in; an app
+    // can override operation, key or types. Values as each app documents them:
+    //   Nuvio Legacy: iqui27/nuvio-native-legacy docs/deeplink.md (Tizen needs a version with PR #807 in it).
+    //   the official Nuvio web app: NuvioMedia/NuvioWeb, js/core/deeplink.
+    nuvio: { name: 'Nuvio', operation: 'http://tizen.org/appcontrol/operation/default', key: 'contentTarget',
+             types: { movie: 'movie', tv: 'series' },
+             apps: [{ appId: 'NuvioTV002.Nuvio', link: 'nuvio-legacy://meta/{type}/{tmdb}' },
+                    { appId: 'NuvioTV001.NuvioTV', link: 'nuvio://tmdb/{type}/{tmdb}' }] },
 
     // The Samsung Home button: tried in this order until one actually takes the screen (all are on the 2025 QN70F's
     // app list; home.media and home.sidebar are the ones running as Smart Hub there). Add your TV's if it differs.
@@ -69,7 +78,8 @@ window.LAUNCHER_CONFIG = {
     // The All apps screen lists applications only (store apps and a few preloaded ones; services and internals are left out).
     //   include: ['AbCdEfGhIj.Name']   force an app id to appear
     //   hide:    ['regex']              hide anything whose id or name matches
-    allApps: { include: [], hide: [] },
+    // org.tizen.art-app is Samsung's Art mode (ArtApp), on TVs that have it; its system-style id would otherwise hide it.
+    allApps: { include: ['org.tizen.art-app'], hide: [] },
 
     /*
      * Control Center (Red key). Talks to Vetro (port 8099) through js/vetro.js only. Every command comes from APL Launcher's
