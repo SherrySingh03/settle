@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Setup guide and troubleshooting
+    url: https://github.com/SherrySingh03/settle/blob/main/docs/SETUP.md#9-troubleshooting-and-diagnostics
+    about: Installing, keys, Vetro, and fixes for the common problems.
+  - name: Vetro itself (rooting, Remapper, the dashboard)
+    url: https://github.com/andrearicci93/vetro/issues
+    about: Problems with Vetro that aren't about Settle belong in Vetro's own tracker.
+  - name: Try the web demo
+    url: https://settle-tv.vercel.app
+    about: See Settle in your browser before installing it.

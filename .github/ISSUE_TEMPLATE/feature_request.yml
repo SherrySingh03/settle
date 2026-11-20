@@ -1,0 +1,30 @@
+name: Feature request
+description: An idea for Settle
+labels: [enhancement]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What would you like Settle to do?
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why?
+      description: What you're trying to do on your TV, and how you do it today.
+    validations:
+      required: true
+  - type: textarea
+    id: how
+    attributes:
+      label: Does it need Vetro or an online service?
+      description: |
+        If you know the API or command it would use, link its documentation. Settle only uses endpoints and
+        commands whose shape is documented or confirmed on a real TV.
+  - type: markdown
+    attributes:
+      value: |
+        Settle keeps to small budgets (under 150 KB of JavaScript, no framework, animations of 200 ms or less;
+        see [CONTRIBUTING.md](https://github.com/SherrySingh03/settle/blob/main/CONTRIBUTING.md)), so some ideas
+        may land as a smaller version.

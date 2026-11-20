@@ -15,7 +15,7 @@ $('wx-full').innerHTML = '<span style="display:flex"></span><span></span>';
 $('act-line').innerHTML = '<span id="al-d"></span><b class="dot"></b><span id="al-i" style="display:flex"></span><span id="al-w"></span>';
 
 var haveKey = window.Recs && window.Recs.hasKey;
-lastShows = (window.Recs && window.Recs.shows && window.Recs.shows()) || [];
+lastShows = (window.Recs && window.Recs.shows && window.Recs.shows()) || (!haveKey && MOCK && MOCK.shows) || [];
 applyRecs((window.Recs && window.Recs.cached()) || (!haveKey && MOCK && MOCK.recs) || []);    // both rows, from cache: no network
 tick();
 setWeather(wxText, wxShort, wxKind);

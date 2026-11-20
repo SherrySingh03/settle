@@ -1,0 +1,77 @@
+name: Bug report
+description: Something doesn't work on your TV, or in the web demo or preview
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. [Known limits](https://github.com/SherrySingh03/settle#known-limits) and the
+        [troubleshooting table](https://github.com/SherrySingh03/settle/blob/main/docs/SETUP.md#9-troubleshooting-and-diagnostics)
+        cover the common cases. **Never paste API keys, IP addresses or account names.**
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Which screen you were on and the remote buttons you pressed.
+      placeholder: |
+        1. On the dock, press Up
+        2. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where does it happen?
+      options:
+        - On the TV, installed from the Apps2Samsung catalogue
+        - On the TV, a package I built myself (npm run build)
+        - In the web demo (settle-tv.vercel.app)
+        - In npm run preview
+    validations:
+      required: true
+  - type: input
+    id: tv
+    attributes:
+      label: TV model and Tizen version
+      description: Settings > Support > About This TV. Not needed for the web demo.
+      placeholder: QN70F, Tizen 9.0
+  - type: input
+    id: build
+    attributes:
+      label: Settle build
+      description: Press Yellow in Settle to open Diagnostics; copy the "Build" line.
+      placeholder: 1.0.0 ...
+  - type: dropdown
+    id: vetro
+    attributes:
+      label: Is Vetro installed and reachable?
+      description: The Control Center shows whether Settle can reach Vetro.
+      options:
+        - "No Vetro"
+        - "Yes, and the Control Center works"
+        - "Yes, but the Control Center says Vetro can't be reached"
+        - "I don't know"
+  - type: checkboxes
+    id: keys
+    attributes:
+      label: Which keys did you set? (just tick them, never paste them)
+      options:
+        - label: TMDB
+        - label: Trakt
+        - label: OMDb
+        - label: Unsplash
+        - label: YouTube Data API
+  - type: textarea
+    id: diag
+    attributes:
+      label: Diagnostics
+      description: |
+        A photo of the Diagnostics screen (Yellow) helps a lot. With a package you built yourself, you can instead
+        run `npm run logs`, press Yellow then OK on the TV, and attach the report from `captures/`.
+        Remove private details first (IP addresses, network and account names).

@@ -1,6 +1,6 @@
 // The browser demo at https://settle-tv.vercel.app: the preview (stand-in TV, apps and Vetro from src/js/mock.js) as a static site,
-// with no keys of anyone's. Without a TMDB key the rows show the built-in sample titles, and without an Unsplash key
-// the wallpaper is the bundled one. The weather is pinned to one city, so visitors' addresses are never looked up.
+// with no keys of anyone's. Without a TMDB key the rows show the built-in sample films and shows, and one bundled
+// Unsplash photo stands in for the daily wallpaper. The weather is pinned to one city, so visitors' addresses are never looked up.
 //   node scripts/build-demo.mjs   -> site/   (then: vercel deploy --prod, from a copy of site/)
 import { readFileSync, writeFileSync, readdirSync, statSync, mkdirSync, rmSync } from 'node:fs';
 import { join, resolve, relative, sep, dirname } from 'node:path';
@@ -17,7 +17,7 @@ for (const p of walk(src)) {
   files.set(rel, readFileSync(p));
 }
 files.set('js/app.js', Buffer.from(joinApp(src)));
-files.set('js/config.local.js', Buffer.from(`/* The web demo: no keys. Sample titles stand in for TMDB, the bundled wallpaper for Unsplash. */
+files.set('js/config.local.js', Buffer.from(`/* The web demo: no keys. Sample titles stand in for TMDB, one bundled photo for Unsplash. */
 window.LAUNCHER_LOCAL = { weather: { latitude: 51.51, longitude: -0.13, label: 'London' } };
 `));
 files.set('js/build-info.js', Buffer.from("window.SETTLE_BUILD = 'web demo " + new Date().toISOString().slice(0, 10) + "';\n"));
@@ -25,7 +25,22 @@ files.set('js/build-info.js', Buffer.from("window.SETTLE_BUILD = 'web demo " + n
 const note = `<div id="demo-note" style="position:fixed;left:0;right:0;bottom:0;z-index:9;padding:6px 12px;font:14px/1.4 system-ui,sans-serif;color:#cfd3da;background:rgba(10,11,13,.82);text-align:center">
 Settle web demo, with sample apps and titles. Arrow keys move, Enter is OK, Esc is Back, <b>c</b> opens the Control Center, <b>g</b> the app switcher.
 <a href="https://github.com/SherrySingh03/settle" style="color:#F5C518">Get it for your Samsung TV</a></div>`;
-files.set('index.html', Buffer.from(files.get('index.html').toString('utf8').replace('</body>', note + '\n</body>').replace(/<title>[^<]*<\/title>/, '<title>Settle web demo</title>')));
+// One Unsplash photo in place of the daily wallpaper (packaging/demo/wall.jpg, fetched and darkened by wallpaper.js on
+// a real install), with its place and photographer credit, as the TV shows them.
+const wall = JSON.parse(readFileSync(join(root, 'packaging', 'demo', 'wall.json'), 'utf8'));
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+files.set('img/wall-demo.jpg', readFileSync(join(root, 'packaging', 'demo', 'wall.jpg')));
+let html = files.get('index.html').toString('utf8');
+for (const [from, to] of [
+  ['src="img/wall.svg"', 'src="img/wall-demo.jpg"'],
+  ['<div id="caption" style="display:none"><span id="cap1"></span><span id="cap2"></span></div>',
+   '<div id="caption"><span id="cap1">' + esc(wall.caption) + '</span><span id="cap2">' + esc(wall.credit) + '</span></div>'],
+  ['</body>', note + '\n</body>'],
+]) {
+  if (!html.includes(from)) { console.error('Demo build stopped: index.html no longer has ' + from); process.exit(1); }
+  html = html.replace(from, to);
+}
+files.set('index.html', Buffer.from(html.replace(/<title>[^<]*<\/title>/, '<title>Settle web demo</title>')));
 
 // Nothing private: no value from your own config.local.js, no private IPv4 address.
 let mine = [];

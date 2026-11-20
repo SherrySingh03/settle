@@ -39,11 +39,15 @@ picture, sound and inputs from it.
 | **Diagnostics** | A screen that shows what Settle sees, and can send a report to your computer. |
 
 <p>
-<img src="docs/img/for-tonight.png" width="49%" alt="For tonight and the movie panel">
-<img src="docs/img/control-center.png" width="49%" alt="Control Center">
+<img src="docs/img/for-tonight.jpg" width="49%" alt="For tonight: a film with its backdrop, where to stream it, and the row of films">
+<img src="docs/img/tv-shows.jpg" width="49%" alt="TV shows: a show with its IMDb rating and the row of shows on your apps">
+</p>
+<p>
+<img src="docs/img/details.jpg" width="49%" alt="Details: cast, where to stream, Open in Netflix, Trailer, Watchlist and More like this">
+<img src="docs/img/control-center.jpg" width="49%" alt="Control Center: Sleep, Picture, Performance, Sound mode, Audio output, Input, Recent apps, Bluetooth, Brightness, Settle">
 </p>
 
-![App switcher](docs/img/app-switcher.png)
+![App switcher: the apps open in the background, with the free memory](docs/img/app-switcher.jpg)
 
 ## Getting started
 
@@ -75,6 +79,24 @@ optionally install Vetro and map the Home button to Settle.
 | "Trending on YouTube" above the dock (otherwise: trailers for films trending this week) | an optional [YouTube Data API](https://console.cloud.google.com/apis/library/youtube.googleapis.com) key |
 | Home button opens Settle, Control Center, Performance mode, sleep timer, app profiles, free memory in the app switcher | [Vetro](https://github.com/andrearicci93/vetro) on the TV (root) |
 | Backup and restore, Diagnostics reports | `npm run logs` running on your computer |
+
+### Known limits
+
+- **Tested on one TV**: a Samsung QN70F (2025, Tizen 9). The launcher itself should run on other Tizen TVs from
+  2016 on; the layout is made for a 1080p screen.
+- **Without Vetro, Settle is an app you open**, not your home screen: the remote's Home button still opens Smart Hub.
+  The Vetro features need a rooted TV; Vetro supports Tizen 6 to 9, and Tizen 10 can't be rooted yet.
+- **Vetro's "Require pairing" must be off**: Settle has no pairing screen yet.
+- **Home pressed twice** opens the app switcher only on some TVs; **Green** always does.
+- **Trailers play in the YouTube app** through YouTube's own cast protocol, which is undocumented. Settle needs the
+  app's screen id, read through Vetro or set once (see SETUP); when a step fails, YouTube still opens and Settle
+  says so.
+- **Diagnostics reports and backups to your computer** need a package you build yourself (`npm run setup` asks for
+  the address); with the catalogue package, Diagnostics is shown on screen only.
+- **Your keys are inside the package**: the catalogue writes them into your copy, and `npm run build` into yours.
+  Don't share your `.wgt`.
+- **The catalogue package and your own build are the same app** (`SettleTv01.Settle`): installing one replaces the
+  other. If you built your own, back up first (Control Center > Settle > Back up to this PC).
 
 ## Remote control
 

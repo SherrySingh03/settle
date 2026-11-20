@@ -25,6 +25,18 @@
         ].map(function (r, i) {
             return { id: 'm' + i, title: r[0], bg: r[1], fg: r[2], shape: r[3], prov: r[4], provider: r[5], note: r[6],
                      meta: r[7], desc: r[8], wl: !!r[9], streaming: true };
+        }),
+        // The TV shows row without a TMDB key: made-up shows, like the films above.
+        shows: [
+            ['Harbour Lights', '#1E2F3A', '#6FB3C8', 'arch', 'Netflix', 'Netflix', 'Streaming in India', '2025 · Drama · 2 seasons · U/A 16+', 'A ferry captain keeps the last night crossing running, and everyone aboard has a reason to be there.'],
+            ['The Night Desk', '#2A2633', '#B59BE0', 'bar', 'Prime Video', 'Prime Video', 'Streaming in India', '2024 · Crime · 1 season · U/A 16+', 'A newspaper night shift chases one story that the morning edition must not print.'],
+            ['Monsoon Kitchen', '#3A2B1C', '#E8B25E', 'circle', 'JioHotstar', 'JioHotstar', 'Streaming in India', '2023 · Comedy · 3 seasons · U/A 13+', 'A family restaurant survives one rainy season at a time.'],
+            ['Signal Lost', '#1A2430', '#7FA7D9', 'circle', 'Apple TV', 'Apple TV', 'Streaming in India', '2025 · Sci-fi · 1 season · U/A 13+', 'A remote research station loses contact with everything except one radio frequency.'],
+            ['Small Hours', '#2C2A22', '#D7CBA0', 'arch', 'SonyLIV', 'SonyLIV', 'Streaming in India', '2024 · Drama · 2 seasons · U/A 13+', 'A hospital ward between midnight and dawn.'],
+            ['Tidewater', '#1C302A', '#86C9A8', 'bar', 'Zee5', 'Zee5', 'Streaming in India', '2022 · Mystery · 2 seasons · U/A 16+', 'A coastal town where the tide keeps returning things that were lost.']
+        ].map(function (r, i) {
+            return { id: 's' + i, title: r[0], bg: r[1], fg: r[2], shape: r[3], prov: r[4], provider: r[5], note: r[6],
+                     meta: r[7], desc: r[8], type: 'tv', streaming: true };
         })
     };
 })();
@@ -35,7 +47,7 @@
     'use strict';
     var CC = (window.LAUNCHER_CONFIG.controlCenter = window.LAUNCHER_CONFIG.controlCenter || {});
     if (!CC.audioDevices || !CC.audioDevices.length) CC.audioDevices = [{ name: 'AirPods Pro', mac: 'AA:BB:CC:11:22:33' }, { name: 'Soundbar', mac: 'AA:BB:CC:44:55:66' }];
-    var tv = { bt: null, sleepAt: 0, v: { GetBacklight: 32, GetPictureMode: 65537, GetContrast: 45, GetSharpness: 10, GetColorStrength: 25, GetColorTint: 15,
+    var tv = { bt: null, sleepAt: 0, gov: 'interactive', v: { GetBacklight: 32, GetPictureMode: 65537, GetContrast: 45, GetSharpness: 10, GetColorStrength: 25, GetColorTint: 15,
                                           GetEyeSaverMode: 0, GetAdaptivePicture: 1, GetHdmiBlackLevel: 1, GetSoundMode: 1, GetAutoVolume: 1, GetAiAudioSceneBased: 0 } };
     var SET = { SetBacklight: 'GetBacklight', SetPictureMode: 'GetPictureMode', SetContrast: 'GetContrast', SetSharpness: 'GetSharpness', SetColorStrength: 'GetColorStrength',
                 SetColorTint: 'GetColorTint', SetEyeSaverMode: 'GetEyeSaverMode', SetAdaptivePicture: 'GetAdaptivePicture', SetHdmiBlackLevel: 'GetHdmiBlackLevel',
@@ -48,8 +60,10 @@
         if (cmd.indexOf('echo ') === 0 && cmd.indexOf('GetBacklight') > 0) {          // the read-everything command
             var re = /echo (\w+) \$\(busctl[^)]*?(Get\w+)[^)]*\)/g, x;
             while ((x = re.exec(cmd))) out += x[1] + ' ii ' + tv.v[x[2]] + ' 0\n';
-            out += 'BT_BEGIN\n' + (tv.bt ? "(('" + tv.bt + "',),)" : '()') + '\nBT_END\nWIFI_BEGIN\n*AO MockNet wifi_abc_managed_psk\nWIFI_END\n';
-        } else if ((m = /(Set\w+) \w+ (?:-- )?(-?\d+)(?: 1)?(?= 2>&1|;|$)/.exec(cmd)) && SET[m[1]]) {
+            out += 'BT_BEGIN\n' + (tv.bt ? "(('" + tv.bt + "',),)" : '()') + '\nBT_END\nWIFI_BEGIN\n*AO MockNet wifi_abc_managed_psk\nWIFI_END\nGOV ' + tv.gov + '\n';
+        } else if ((m = /^echo (performance|interactive) > \/sys\/devices\/system\/cpu\/cpufreq\/policy0\/scaling_governor/.exec(cmd))) { tv.gov = m[1]; out = tv.gov; }
+        else if (/^cat \/sys\/devices\/system\/cpu\/cpufreq\/policy0\/scaling_governor/.test(cmd)) { out = tv.gov; }
+        else if ((m = /(Set\w+) \w+ (?:-- )?(-?\d+)(?: 1)?(?= 2>&1|;|$)/.exec(cmd)) && SET[m[1]]) {
             tv.v[SET[m[1]]] = +m[2];
             out = 'i 0\nii ' + tv.v[SET[m[1]]] + ' 0';
         } else if ((m = /buds_switching_connect ([0-9A-F:]{17})/.exec(cmd))) { tv.bt = m[1]; }
