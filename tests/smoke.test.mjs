@@ -51,6 +51,18 @@ test('starts on the dock with no errors and under 600 elements', async () => {
   await t.ctx.close();
 });
 
+test('App switcher lists the open apps, the last one opened from Settle first', async () => {
+  const t = await open();
+  await t.page.evaluate(() => localStorage.setItem('settle.launchedat.v1', JSON.stringify({ 'mock.YouTube': 1000, 'mock.Spotify': 2000 })));
+  await t.key('g', 1200);
+  const cards = await t.page.evaluate(() => [...document.getElementById('sw-row').children].map((c) => c.textContent.trim()));
+  assert.ok(cards.length >= 3, 'cards: ' + JSON.stringify(cards));
+  assert.match(cards[0], /Spotify/);
+  assert.match(cards[1], /YouTube/);
+  assert.deepEqual(t.errors, []);
+  await t.ctx.close();
+});
+
 test('Up twice opens Search; Back closes it', async () => {
   const t = await open();
   await t.key('ArrowUp', 500); assert.equal(await t.zone(), 'full');

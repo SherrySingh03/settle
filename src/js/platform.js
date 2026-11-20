@@ -304,6 +304,8 @@
     }
     var TIMES_KEY = 'settle.launchedat.v1';
     function launchTimes() { try { var m = JSON.parse(localStorage.getItem(TIMES_KEY)); return m && typeof m === 'object' ? m : {}; } catch (e) { return {}; } }
+    // App ids opened from Settle, most recent first (the app switcher's order).
+    function recent() { var t = launchTimes(); return Object.keys(t).sort(function (a, b) { return t[b] - t[a]; }); }
 
     function launch(id, onFail) {
         if (!id) return;                                                 // a favourite shown before the app list arrived
