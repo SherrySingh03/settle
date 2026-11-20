@@ -236,10 +236,20 @@ test('Nuvio: Legacy first when both are installed, and a film or show gets its l
   await t.ctx.close();
 });
 
-test('All apps: Samsung\'s ArtApp is listed, though its id looks like a system part', async () => {
+test('Art mode: in All apps with Samsung\'s icon and name, never put on the default dock', async () => {
   const t = await open();
-  const all = await t.page.evaluate(() => window.Platform.allInstalled().map((a) => a.id + ' ' + (a.label || a.name)));
-  assert.ok(all.includes('org.tizen.art-app ArtApp'), all.join(', '));
+  // A TV like the QN70F: ArtApp under its real name and system-style id, and no Netflix or JioHotstar, so the
+  // default dock has room for it if the config entry were treated as a dock favourite.
+  const dock = await t.page.evaluate(() => {
+    window.MOCK.tvApps = [{ id: 'com.samsung.tv.cobalt-yt', name: 'YouTube' }, { id: 'org.tizen.primevideo', name: 'Prime Video' },
+                          { id: 'org.tizen.art-app', name: 'ArtApp' }];
+    return window.Platform.apps(window.LAUNCHER_CONFIG).then((items) => items.map((i) => i.id));
+  });
+  assert.ok(dock.includes('org.tizen.primevideo'), dock.join(', '));
+  assert.ok(!dock.includes('org.tizen.art-app'), dock.join(', '));
+  const art = await t.page.evaluate(() => window.Platform.allInstalled().filter((a) => a.id === 'org.tizen.art-app')
+    .map((a) => ({ label: a.label, icon: a.icon })));
+  assert.deepEqual(art, [{ label: 'Art Mode', icon: 'img/brands/artmode.svg' }]);
   assert.deepEqual(t.errors, []);
   await t.ctx.close();
 });

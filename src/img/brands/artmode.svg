@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="192px" height="192px" viewBox="0 0 192 192" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>home_i_icon_mode_art_selected</title>
+    <defs>
+        <linearGradient x1="0%" y1="32.7885206%" x2="83.82968%" y2="62.1029357%" id="linearGradient-1">
+            <stop stop-color="#585DE9" offset="0%"></stop>
+            <stop stop-color="#2E293A" offset="100%"></stop>
+        </linearGradient>
+        <linearGradient x1="3.8561698%" y1="19.6620499%" x2="83.40845%" y2="80.3379501%" id="linearGradient-2">
+            <stop stop-color="#70D1FE" offset="0%"></stop>
+            <stop stop-color="#8051DD" offset="100%"></stop>
+        </linearGradient>
+        <path d="M7.95382465,0 C3.56715747,0 0,3.55939075 0,7.93198008 L0,51.6538056 C0,56.0274106 3.56715747,59.5857864 7.95382465,59.5857864 L22.1908961,59.5857864 L18.1116721,66.2629426 C16.6497884,68.6568522 17.4102529,71.7796936 19.8107547,73.238577 C20.6373896,73.7421322 21.5515765,73.9796974 22.4535455,73.9796974 C24.1709545,73.9796974 25.8476399,73.113705 26.8056009,71.544162 L47.6669568,37.3939094 C49.1298542,35.0010158 48.3693925,31.8761423 45.9688897,30.418275 C43.5683889,28.9593909 40.4359292,29.7187818 38.973028,32.1126907 L27.7727227,50.4487304 L9.16221895,50.4487304 L9.16221895,9.13705572 L85.837782,9.13705572 L85.837782,50.4487304 L61.0621183,50.4487304 C61.0244518,50.4487304 60.9878055,50.4588832 60.950138,50.4599007 C59.63587,50.3867998 58.2930925,50.816244 57.2435097,51.7685278 C55.163688,53.6558386 55.010985,56.8659882 56.9014527,58.9401024 L69.120803,72.3390848 C70.1255895,73.4406074 71.5050133,74 72.8885125,74 C74.1101365,74 75.3358417,73.5634518 76.311106,72.6802026 C78.3909315,70.7928955 78.5436373,67.5827422 76.653163,65.5086302 L71.2505092,59.5857864 L87.0461725,59.5857864 C91.4318238,59.5857864 95,56.0274106 95,51.6538056 L95,7.93198008 C95,3.55939075 91.4318238,0 87.0461725,0 L7.95382465,0 Z" id="path-3"></path>
+        <filter x="-2.1%" y="-2.7%" width="108.4%" height="110.8%" filterUnits="objectBoundingBox" id="filter-4">
+            <feOffset dx="2" dy="2" in="SourceAlpha" result="shadowOffsetOuter1"></feOffset>
+            <feGaussianBlur stdDeviation="1" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+            <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.5019608 0" type="matrix" in="shadowBlurOuter1"></feColorMatrix>
+        </filter>
+    </defs>
+    <g id="home_i_icon_mode_art_selected" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Art_On" transform="translate(49.000000, 59.000000)">
+            <polygon id="Fill-1" fill="url(#linearGradient-1)" points="8.30029246 54.0314746 88.2885077 54.0314746 88.2885077 7.10152315 8.30029246 7.10152315"></polygon>
+            <g id="Fill-4">
+                <use fill="black" fill-opacity="1" filter="url(#filter-4)" xlink:href="#path-3"></use>
+                <use fill="url(#linearGradient-2)" fill-rule="evenodd" xlink:href="#path-3"></use>
+            </g>
+        </g>
+    </g>
+</svg>

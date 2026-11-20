@@ -13,6 +13,7 @@
  *   prefer: ['app.id']                the first of these installed wins over other matches (the rest are left out)
  *   chip: true                        always show the name, never the icon (for apps whose package ships
  *                                     only Samsung's generic pinwheel)
+ *   dock: false                       only names and draws the app; it is not put on the default dock
  */
 window.LAUNCHER_CONFIG = {
     locale: 'en-GB',
@@ -27,7 +28,10 @@ window.LAUNCHER_CONFIG = {
         { match: 'hotstar', label: 'JioHotstar', tone: '#14194a', logo: 'img/brands/jiohotstar.png' },
         { match: 'spotify', label: 'Spotify', brand: 'spotify', tone: '#2C3A2E' },
         { match: 'plex', label: 'Plex', brand: 'plex', tone: '#3A3524' },
-        { id: 'com.samsung.tv.aria-video', label: 'Apple TV', brand: 'appletv', useBrand: true, tone: '#2A2D33' }
+        { id: 'com.samsung.tv.aria-video', label: 'Apple TV', brand: 'appletv', useBrand: true, tone: '#2A2D33' },
+        // Samsung's Art mode: its package names an icon that isn't on the TV, so Samsung's own Art mode icon (from its
+        // home screen) is bundled. Listed in All apps (allApps.include below), never put on the default dock.
+        { id: 'org.tizen.art-app', label: 'Art Mode', logo: 'img/brands/artmode.svg', tone: '#2E293A', dock: false }
     ],
 
     // Idle screensaver: launches the Aerial Screensaver app after this long with no remote input on the home screen.

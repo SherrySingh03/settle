@@ -127,6 +127,7 @@
     function defaultDock(cfg) {
         var me = selfId(), used = {}, out = [];
         cfg.apps.forEach(function (entry) {
+            if (entry.dock === false) return;                                  // decorates its app, isn't a favourite
             var re = entry.match ? new RegExp(entry.match, 'i') : null;
             var hit = preferred(entry, used) || raw.filter(function (a) {
                 if (used[a.id] || a.id === me) return false;
@@ -141,7 +142,7 @@
     // No app list at all (first boot, the TV not answering yet): the configured favourites, drawn with their bundled
     // logo or as a name chip. They are replaced by the real apps as soon as the list arrives.
     function favourites(cfg) {
-        return cfg.apps.map(function (e) {
+        return cfg.apps.filter(function (e) { return e.dock !== false; }).map(function (e) {
             var b = e.useBrand === true && e.brand && window.BRANDS && window.BRANDS[e.brand];
             return { id: e.id || '', pkg: '', label: e.label, tone: e.tone, brand: b ? e.brand : '', brandFirst: !!b, icon: e.logo || '', placeholder: true };
         });

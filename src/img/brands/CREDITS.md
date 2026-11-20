@@ -19,3 +19,8 @@ Rotten Tomatoes score only, to say where the score comes from.
 Stremio, Apple Music and Samsung Internet (stremio.svg, applemusic.svg, samsunginternet.svg): homarr-labs/dashboard-icons (svg/),
 https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/{stremio,apple-music,samsung-internet}.svg, unchanged. They replace the TV's
 own icons for those apps (brands.js `always`). Trademarks belong to their owners; used here only to identify apps.
+
+Samsung Art Mode (artmode.svg): Samsung's own Art mode icon, unchanged, from the TV's Samsung home component
+(com.samsung.tv.coba.art, shared/res/side_bar_icon/home_i_icon_mode_art_selected.svg on a 2025 QN70F). Samsung's Art mode
+app (org.tizen.art-app) names an icon its package doesn't ship, so Settle draws this one for it. The mark belongs to
+Samsung; it is used here only to identify the app.
