@@ -236,7 +236,7 @@ button{font-family:inherit}
 #apps{left:0;top:0;width:1920px;height:1080px;opacity:0;visibility:hidden;transition:opacity var(--m) var(--apple)}
 #apps.open{opacity:1;visibility:visible}
 #a-title{position:absolute;left:96px;top:54px;font-size:52px;line-height:60px;font-weight:650;font-stretch:112%}
-#a-clip{position:absolute;left:96px;top:150px;width:1728px;height:876px;overflow:hidden}
+#a-clip{position:absolute;left:76px;top:150px;width:1768px;height:876px;padding:0 20px;overflow:hidden}  /* 20px each side: room for the focused tile's scale and outline, grid still at 96px */
 #a-grid{position:relative;display:grid;grid-template-columns:repeat(6,180px);justify-content:space-between;row-gap:40px;transition:transform var(--m) var(--ease)}
 .acell{position:relative;width:180px;height:244px}
 .atile{outline:3px solid transparent;width:180px;height:180px;border-radius:36px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:26px;line-height:30px;font-weight:600;padding:14px;background:#16181C}

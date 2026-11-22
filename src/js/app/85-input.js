@@ -44,7 +44,7 @@ document.addEventListener('keyup', function (e) {                // tap OK = ope
     else if (hold.z === 'apps' && S.zone === 'apps' && aItems[aSel]) P.launch(aItems[aSel].id);
 });
 
-/* Play/Pause: one press = Control Center, double press = Diagnostics; a hold also opens it where the remote reports one (Red and Yellow still work as well).
+/* Play/Pause: two quick presses = Control Center; a hold also opens it where the remote reports one (Red opens it too, Yellow opens Diagnostics).
    The TV does not repeat keys, so a hold is a timer started on keydown and cancelled on keyup. */
 // Every key event, mapped or not, is noted for Diagnostics: to see what a remote button really sends.
 var keyLog = window.__keyLog = [], keyT = 0;

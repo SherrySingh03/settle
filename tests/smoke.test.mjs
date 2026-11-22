@@ -254,6 +254,27 @@ test('Art mode: in All apps with Samsung\'s icon and name, never put on the defa
   await t.ctx.close();
 });
 
+test('All apps: the focused tile at either edge is not cropped', async () => {
+  const t = await open();
+  for (let i = 0; i < 12; i++) await t.key('ArrowRight', 60);          // the dock's last tile is Sources
+  await t.key('ArrowLeft', 120);                                        // ... and All apps sits just before it
+  await t.key('Enter', 700);
+  // The focused tile (scaled up, 3 px outline) must fit inside the box that crops the scrolling grid.
+  const fits = () => t.page.evaluate(() => {
+    const clip = document.getElementById('a-clip').getBoundingClientRect();
+    const tile = document.querySelector('#a-grid .acell.on .tile').getBoundingClientRect(), o = 3;
+    return { left: tile.left - o - clip.left, right: clip.right - (tile.right + o), top: tile.top - o - clip.top };
+  });
+  const first = await fits();                                           // top row, first column
+  for (let i = 0; i < 5; i++) await t.key('ArrowRight', 120);           // top row, last of the six columns
+  const last = await fits();
+  for (const [name, f] of [['first', first], ['last', last]]) {
+    assert.ok(f.left >= 0 && f.right >= 0 && f.top >= 0, name + ' column: ' + JSON.stringify(f));
+  }
+  assert.deepEqual(t.errors, []);
+  await t.ctx.close();
+});
+
 test('Nuvio: whichever one is installed, with its own link', async () => {
   const t = await open({ init: () => { window.__nuvio = 'official'; } });
   assert.equal(await t.page.evaluate(() => window.Platform.nuvioApp()), 'NuvioTV001.NuvioTV');
