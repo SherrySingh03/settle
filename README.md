@@ -7,6 +7,8 @@ settings one button away, without the ads and clutter of the stock Smart Hub.
 
 ![Home screen](docs/img/home.jpg)
 
+https://github.com/user-attachments/assets/8cf02960-cd0f-45e9-87ad-9ce7c65beef2
+
 **[Try it in your browser](https://settle-tv.vercel.app)**: the web demo, with sample apps and titles (arrow keys, Enter, Esc). 
 **Install it** from the [Apps2Samsung](https://github.com/Apps2Samsung/Apps2Samsung) catalogue, under Home ([how](docs/SETUP.md#installing-from-the-apps2samsung-catalogue)), or build it yourself as below.
 
